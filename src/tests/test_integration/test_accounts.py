@@ -1094,3 +1094,30 @@ async def test_new_activation_latter_with_not_valid_password(client, db_session,
     token = tokens[0]
     assert old_token == token, "old token should not be deleted if password not valid"
 
+
+@pytest.mark.asyncio
+async def test_new_activation_latter_if_user_already_activated(client, db_session, seed_user_groups):
+    """
+    Test endpoint if account is already activated
+    """
+    payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!"
+    }
+
+    response = await client.post("/api/v1/accounts/register/", json=payload)
+    assert response.status_code == 201, "Expected status code 201 Created."
+    stmt = select(UserModel).options(joinedload(UserModel.activation_token))
+    result = await db_session.execute(stmt)
+    user = result.scalars().first()
+    user.is_active = True
+    await db_session.commit()
+
+    response = await client.post("/api/v1/accounts/new_activation_token/",
+                                 json=payload)
+
+    assert response.status_code == 409, "Expected status code 409_CONFLICT."
+    await db_session.refresh(user)
+    assert user.activation_token is None, "If user is already active, activation_token should be deleted"
+
+
