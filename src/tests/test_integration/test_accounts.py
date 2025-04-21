@@ -179,12 +179,13 @@ async def test_activate_account_success(client, db_session, seed_user_groups):
     assert user.activation_token is not None and user.activation_token.token is not None, \
         "Activation token was not created in the database."
 
-    activation_payload = {
-        "email": registration_payload["email"],
-        "token": user.activation_token.token
-    }
+    # activation_payload = {
+    #     "email": registration_payload["email"],
+    #     "token": user.activation_token.token
+    # }
 
-    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    #activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    activation_response = await client.get(f"/api/v1/accounts/activate/?token={user.activation_token.token}")
     assert activation_response.status_code == 200, "Expected status code 200 for successful activation."
     assert activation_response.json()["message"] == "User account activated successfully."
 
@@ -238,12 +239,12 @@ async def test_activate_user_with_expired_token(client, db_session, seed_user_gr
     activation_token.expires_at = datetime.now(timezone.utc) - timedelta(days=2)
     await db_session.commit()
 
-    activation_payload = {
-        "email": registration_payload["email"],
-        "token": activation_token.token
-    }
-    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
-
+    # activation_payload = {
+    #     "email": registration_payload["email"],
+    #     "token": activation_token.token
+    # }
+    # activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    activation_response = await client.get(f"/api/v1/accounts/activate/?token={activation_token.token}")
     assert activation_response.status_code == 400, "Expected status code 400 for expired token."
     assert activation_response.json()["detail"] == "Invalid or expired activation token.", (
         "Expected error message for expired token."
@@ -289,11 +290,13 @@ async def test_activate_user_with_deleted_token(client, db_session, seed_user_gr
     )
     await db_session.commit()
 
-    activation_payload = {
-        "email": registration_payload["email"],
-        "token": token_value
-    }
-    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    # activation_payload = {
+    #     "email": registration_payload["email"],
+    #     "token": token_value
+    # }
+    # activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    activation_response = await client.get(f"/api/v1/accounts/activate/?token={token_value}")
+
     assert activation_response.status_code == 400, "Expected status code 400 for deleted token."
     assert activation_response.json()["detail"] == "Invalid or expired activation token.", (
         "Expected error message for deleted token."
@@ -333,11 +336,12 @@ async def test_activate_already_active_user(client, db_session, seed_user_groups
     activation_token = result_token.scalars().first()
     assert activation_token is not None, "Activation token should exist for the user."
 
-    activation_payload = {
-        "email": registration_payload["email"],
-        "token": activation_token.token
-    }
-    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    # activation_payload = {
+    #     "email": registration_payload["email"],
+    #     "token": activation_token.token
+    # }
+    # activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    activation_response = await client.get(f"/api/v1/accounts/activate/?token={activation_token.token}")
     assert activation_response.status_code == 400, "Expected status code 400 for already active user."
     assert activation_response.json()["detail"] == "User account is already active.", (
         "Expected error message for already active user."
@@ -477,11 +481,12 @@ async def test_reset_password_success(client, db_session, seed_user_groups):
     activation_token = result_token.scalars().first()
     assert activation_token is not None, "Activation token should be created in the database."
 
-    activation_payload = {
-        "email": registration_payload["email"],
-        "token": activation_token.token
-    }
-    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    # activation_payload = {
+    #     "email": registration_payload["email"],
+    #     "token": activation_token.token
+    # }
+    # activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+    activation_response = await client.get(f"/api/v1/accounts/activate/?token={activation_token.token}")
     assert activation_response.status_code == 200, "Expected status code 200 for successful activation."
 
     await db_session.refresh(created_user)
@@ -992,3 +997,52 @@ async def test_refresh_access_token_user_not_found(client, db_session, jwt_manag
 
     assert refresh_response.status_code == 404, "Expected status code 404 for non-existent user."
     assert refresh_response.json()["detail"] == "User not found.", "Unexpected error message."
+
+@pytest.mark.asyncio
+async def test_new_activation_later_send_success(client, db_session, seed_user_groups):
+    """
+    Test old activation token is deleted, new one created, activation letter is sent
+
+    Validates that a new user and an activation token are created in the database.
+    """
+    payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!"
+    }
+
+    response = await client.post("/api/v1/accounts/register/", json=payload)
+    assert response.status_code == 201, "Expected status code 201 Created."
+    response_data = response.json()
+    assert response_data["email"] == payload["email"], "Returned email does not match."
+    assert "id" in response_data, "Response does not contain user ID."
+
+    stmt_user = select(UserModel).where(UserModel.email == payload["email"])
+    result = await db_session.execute(stmt_user)
+    created_user = result.scalars().first()
+    assert created_user is not None, "User was not created in the database."
+    assert created_user.email == payload["email"], "Created user's email does not match."
+
+    stmt_token = select(ActivationTokenModel).where(
+        ActivationTokenModel.user_id == created_user.id)
+    old_activation_token = await db_session.execute(stmt_token)
+
+    response = await client.post("/api/v1/accounts/new_activation_token/", json=payload)
+    assert response.status_code == 201, "Expected status code 201 Created."
+    response_data = response.json()
+    assert response_data["email"] == payload["email"], "Returned email does not match."
+    assert "id" in response_data, "Response does not contain user ID."
+    stmt_token = select(ActivationTokenModel).where(ActivationTokenModel.user_id == created_user.id)
+    result = await db_session.execute(stmt_token)
+    tokens = result.scalars().all()
+    assert len(tokens) <= 1, "Only one activation token should be in the database."
+
+    assert len(tokens) == 1, "Activation token was not created in the database."
+    activation_token = tokens[0]
+    assert activation_token.user_id == created_user.id, "Activation token's user_id does not match."
+    assert activation_token.token is not None, "Activation token has no token value."
+    assert activation_token != old_activation_token, "Old token not deleted, new one not created"
+    expires_at = activation_token.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    assert expires_at > datetime.now(timezone.utc), "Activation token is already expired."
