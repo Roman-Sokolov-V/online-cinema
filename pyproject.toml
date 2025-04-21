@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "src"
 version = "0.1.0"
-description = "Mate task for first lesson"
-authors = ["Yurii Okal <yurii.okal@mate.com>"]
+description = "Online cinema portfolio project"
+authors = ["Yurii Okal <yurii.okal@mate.com>", "Roman Sokolov <gnonasis@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
