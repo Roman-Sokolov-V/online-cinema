@@ -191,6 +191,7 @@ async def send_new_activation_token(
     if existing_user.is_active:
         stmt = delete(ActivationTokenModel).where(ActivationTokenModel.user_id == existing_user.id)
         await db.execute(stmt)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"A user with this email {user_data.email} already activate."
