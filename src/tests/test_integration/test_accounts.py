@@ -999,7 +999,7 @@ async def test_refresh_access_token_user_not_found(client, db_session, jwt_manag
     assert refresh_response.json()["detail"] == "User not found.", "Unexpected error message."
 
 @pytest.mark.asyncio
-async def test_new_activation_later_send_success(client, db_session, seed_user_groups):
+async def test_new_activation_latter_send_success(client, db_session, seed_user_groups):
     """
     Test old activation token is deleted, new one created, activation letter is sent
 
@@ -1044,5 +1044,41 @@ async def test_new_activation_later_send_success(client, db_session, seed_user_g
     expires_at = activation_token.expires_at
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
-
     assert expires_at > datetime.now(timezone.utc), "Activation token is already expired."
+
+
+@pytest.mark.asyncio
+async def test_new_activation_latter_user_not_found(client, db_session, seed_user_groups):
+    """
+    Test endpoint if user with received email is not exists in database
+    """
+    payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!"
+    }
+
+    response = await client.post("/api/v1/accounts/new_activation_token/", json=payload)
+    assert response.status_code == 400, "Expected status code 400_BAD_REQUEST."
+    stmt_token = select(ActivationTokenModel)
+    result = await db_session.execute(stmt_token)
+    token = result.scalars().all()
+    assert len(token) == 0, "activation token should not be created if user with recived email not exists"
+
+
+# @pytest.mark.asyncio
+# async def test_new_activation_latter_with_not_valid_(client, db_session, seed_user_groups):
+#     """
+#     Test endpoint if user with received email is not exists in database
+#     """
+#     payload = {
+#         "email": "testuser@example.com",
+#         "password": "StrongPassword123!"
+#     }
+#
+#     response = await client.post("/api/v1/accounts/new_activation_token/", json=payload)
+#     assert response.status_code == 400, "Expected status code 400_BAD_REQUEST."
+#     stmt_token = select(ActivationTokenModel)
+#     result = await db_session.execute(stmt_token)
+#     token = result.scalars().all()
+#     assert len(token) == 0, "activation token should not be created if user with recived email not exists"
+#
