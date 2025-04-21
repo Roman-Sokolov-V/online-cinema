@@ -1065,20 +1065,32 @@ async def test_new_activation_latter_user_not_found(client, db_session, seed_use
     assert len(token) == 0, "activation token should not be created if user with recived email not exists"
 
 
-# @pytest.mark.asyncio
-# async def test_new_activation_latter_with_not_valid_(client, db_session, seed_user_groups):
-#     """
-#     Test endpoint if user with received email is not exists in database
-#     """
-#     payload = {
-#         "email": "testuser@example.com",
-#         "password": "StrongPassword123!"
-#     }
-#
-#     response = await client.post("/api/v1/accounts/new_activation_token/", json=payload)
-#     assert response.status_code == 400, "Expected status code 400_BAD_REQUEST."
-#     stmt_token = select(ActivationTokenModel)
-#     result = await db_session.execute(stmt_token)
-#     token = result.scalars().all()
-#     assert len(token) == 0, "activation token should not be created if user with recived email not exists"
-#
+@pytest.mark.asyncio
+async def test_new_activation_latter_with_not_valid_password(client, db_session, seed_user_groups):
+    """
+    Test endpoint if password is not valid
+    """
+    payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!"
+    }
+
+    response = await client.post("/api/v1/accounts/register/", json=payload)
+    assert response.status_code == 201, "Expected status code 201 Created."
+    stmt_token = select(ActivationTokenModel)
+    result = await db_session.execute(stmt_token)
+    old_token = token = result.scalars().first()
+
+    payload["password"] = "IncorrectStrongPassword123!"
+
+    response = await client.post("/api/v1/accounts/new_activation_token/",
+                                 json=payload)
+
+    assert response.status_code == 400, "Expected status code 400_BAD_REQUEST."
+    stmt_token = select(ActivationTokenModel)
+    result = await db_session.execute(stmt_token)
+    tokens = result.scalars().all()
+    assert len(tokens) == 1, "new activation token should not be created if password not valid"
+    token = tokens[0]
+    assert old_token == token, "old token should not be deleted if password not valid"
+
