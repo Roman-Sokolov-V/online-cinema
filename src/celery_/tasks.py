@@ -4,7 +4,7 @@ from celery import Celery
 from sqlalchemy import delete
 
 from database import (
-    get_sync_postgresql_db_contextmanager,
+    get_sync_db_contextmanager,
     ActivationTokenModel
 )
 
@@ -20,9 +20,9 @@ app.conf.timezone = "UTC"
 @app.task()
 def remove_expired_activation_tokens():
     print("remove_expired_activation_tokens starts")
-    with get_sync_postgresql_db_contextmanager() as db:
-        stmt = delete(ActivationTokenModel).where(ActivationTokenModel.expires_at < datetime.now(timezone.utc))
+    with get_sync_db_contextmanager() as db:
+        stmt = delete(ActivationTokenModel).where(
+            ActivationTokenModel.expires_at < datetime.now(timezone.utc))
         db.execute(stmt)
         db.commit()
         print("expired activation tokens have removed successfully")
-
