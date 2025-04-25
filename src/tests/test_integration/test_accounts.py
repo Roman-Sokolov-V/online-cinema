@@ -292,12 +292,11 @@ async def test_activate_user_with_deleted_token(client, db_session, seed_user_gr
     )
     await db_session.commit()
 
-    # activation_payload = {
-    #     "email": registration_payload["email"],
-    #     "token": token_value
-    # }
-    # activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
-    activation_response = await client.get(f"/api/v1/accounts/activate/?token={token_value}")
+    activation_payload = {
+        "email": registration_payload["email"],
+        "token": token_value
+    }
+    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
 
     assert activation_response.status_code == 400, "Expected status code 400 for deleted token."
     assert activation_response.json()["detail"] == "Invalid or expired activation token.", (
