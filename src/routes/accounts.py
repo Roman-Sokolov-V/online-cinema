@@ -33,6 +33,7 @@ from schemas import (
     TokenRefreshResponseSchema, LogoutResponseSchema
 )
 from security.interfaces import JWTAuthManagerInterface
+from .utils import check_access_token
 
 router = APIRouter()
 
@@ -133,11 +134,11 @@ async def register_user(
             detail="An error occurred during user creation."
         ) from e
     else:
-        activation_link = BASE_LINK + f"activate/?token={activation_token.token}"
-        print(f"{activation_token=}")
-        await email_sender.send_activation_email(
+        activation_link_post = BASE_LINK + "activate/"
+        await email_sender.send_activation_email_post(
             new_user.email,
-            activation_link
+            activation_link_post,
+            activation_token.token
         )
 
         return UserRegistrationResponseSchema.model_validate(new_user)
@@ -217,90 +218,9 @@ async def send_new_activation_token(
 
 
 
-@router.get(
-    "/activate/",
-    response_model=MessageResponseSchema,
-    summary="Activate User Account",
-    description="Activate a user's account using their email and activation token.",
-    status_code=status.HTTP_200_OK,
-    responses={
-        400: {
-            "description": "Bad Request - The activation token is invalid or expired, "
-                           "or the user account is already active.",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "invalid_token": {
-                            "summary": "Invalid Token",
-                            "value": {
-                                "detail": "Invalid or expired activation token."
-                            }
-                        },
-                        "already_active": {
-                            "summary": "Account Already Active",
-                            "value": {
-                                "detail": "User account is already active."
-                            }
-                        },
-                    }
-                }
-            },
-        },
-    },
-)
-async def activate_account(
-        token: str,
-        db: AsyncSession = Depends(get_db),
-        email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
-
-) -> MessageResponseSchema:
-
-    stmt = (
-        select(ActivationTokenModel)
-        .options(joinedload(ActivationTokenModel.user))
-        .join(UserModel)
-        .where(
-            ActivationTokenModel.token == token
-        )
-    )
-    result = await db.execute(stmt)
-    token_record = result.scalars().first()
-
-    now_utc = datetime.now(timezone.utc)
-    if not token_record or cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc) < now_utc:
-        if token_record:
-            await db.delete(token_record)
-            await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired activation token."
-        )
-
-    user = token_record.user
-    if user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User account is already active."
-        )
-
-    user.is_active = True
-    await db.delete(token_record)
-    await db.commit()
-
-    login_link = BASE_LINK + "login/"
-    print(f"{user.email=}")
-
-    await email_sender.send_activation_complete_email(
-        str(user.email),
-        login_link
-    )
-    return MessageResponseSchema(message="User account activated successfully.")
-
-
-# @router.post(
+# @router.get(
 #     "/activate/",
 #     response_model=MessageResponseSchema,
-#     name="activate-user",
 #     summary="Activate User Account",
 #     description="Activate a user's account using their email and activation token.",
 #     status_code=status.HTTP_200_OK,
@@ -330,38 +250,18 @@ async def activate_account(
 #     },
 # )
 # async def activate_account(
-#         activation_data: UserActivationRequestSchema,
+#         token: str,
 #         db: AsyncSession = Depends(get_db),
 #         email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
+#
 # ) -> MessageResponseSchema:
-#     """
-#     Endpoint to activate a user's account.
 #
-#     This endpoint verifies the activation token for a user by checking that the token record exists
-#     and that it has not expired. If the token is valid and the user's account is not already active,
-#     the user's account is activated and the activation token is deleted. If the token is invalid, expired,
-#     or if the account is already active, an HTTP 400 error is raised.
-#
-#     Args:
-#         activation_data (UserActivationRequestSchema): Contains the user's email and activation token.
-#         db (AsyncSession): The asynchronous database session.
-#         email_sender (EmailSenderInterface): The asynchronous email sender.
-#
-#     Returns:
-#         MessageResponseSchema: A response message confirming successful activation.
-#
-#     Raises:
-#         HTTPException:
-#             - 400 Bad Request if the activation token is invalid or expired.
-#             - 400 Bad Request if the user account is already active.
-#     """
 #     stmt = (
 #         select(ActivationTokenModel)
 #         .options(joinedload(ActivationTokenModel.user))
 #         .join(UserModel)
 #         .where(
-#             UserModel.email == activation_data.email,
-#             ActivationTokenModel.token == activation_data.token
+#             ActivationTokenModel.token == token
 #         )
 #     )
 #     result = await db.execute(stmt)
@@ -394,8 +294,150 @@ async def activate_account(
 #         str(activation_data.email),
 #         login_link
 #     )
-#
 #     return MessageResponseSchema(message="User account activated successfully.")
+
+#################################################################################
+@router.post(
+    "/activate/",
+    response_model=MessageResponseSchema,
+    name="activate-user",
+    summary="Activate User Account",
+    description=(
+        "Activate a user's account using one of two methods:\n\n"
+        "1. **Self-activation**: Provide user's email and activation token in the request body.\n"
+        "2. **Admin activation**: Provide user's email in the request body, and include a valid admin access token in the `Authorization` header.\n\n"
+        "**Note:** In both cases, a successful response confirms that the user has been activated."
+    ),
+    status_code=status.HTTP_200_OK,
+    responses={
+        400: {
+            "description": "Bad Request - The activation token is invalid or expired, "
+                           "or the user account is already active.",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "invalid_token": {
+                            "summary": "Invalid Token",
+                            "value": {"detail": "Invalid or expired activation token."}
+                        },
+                        "already_active": {
+                            "summary": "Account Already Active",
+                            "value": {"detail": "User account is already active."}
+                        },
+                    }
+                }
+            },
+        },
+        403: {
+            "description": "Forbidden - The provided access token does not belong to an admin user.",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "not_admin": {
+                            "summary": "Not an Admin",
+                            "value": {"detail": "User is not admin"}
+                        }
+                    }
+                }
+            },
+        },
+    },
+)
+async def activate_account_(
+        activation_data: UserActivationRequestSchema,
+        authorization: Annotated[str | None, Header()] = None,
+        db: AsyncSession = Depends(get_db),
+        email_sender: EmailSenderInterface = Depends(get_accounts_email_notificator),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+) -> MessageResponseSchema:
+    """
+    Endpoint to activate a user's account.
+
+    This endpoint verifies the activation token for a user by checking that the token record exists
+    and that it has not expired. If the token is valid and the user's account is not already active,
+    the user's account is activated and the activation token is deleted. If the token is invalid, expired,
+    or if the account is already active, an HTTP 400 error is raised.
+
+    Args:
+        activation_data (UserActivationRequestSchema): Contains the user's email and activation token.
+        db (AsyncSession): The asynchronous database session.
+        email_sender (EmailSenderInterface): The asynchronous email sender.
+
+    Returns:
+        MessageResponseSchema: A response message confirming successful activation.
+
+    Raises:
+        HTTPException:
+            - 400 Bad Request if the activation token is invalid or expired.
+            - 400 Bad Request if the user account is already active.
+    """
+    if authorization:
+        access_token_dict = check_access_token(authorization, jwt_manager)
+        stmt = select(UserModel).where(UserModel.id == access_token_dict["user_id"]).options(joinedload(UserModel.group))
+        result = await db.execute(stmt)
+        admin = result.scalars().first()
+        if not admin or admin.group.name != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is not admin"
+            )
+        stmt = (
+            select(UserModel)
+            .options(joinedload(UserModel.activation_token))
+            .where(
+                UserModel.email == activation_data.email
+            )
+        )
+        result = await db.execute(stmt)
+        user = result.scalars().first()
+        user.is_active = True
+        activation_token = user.activation_token
+        db.delete(activation_token)
+        db.commit()
+
+    else:
+
+        stmt = (
+            select(ActivationTokenModel)
+            .options(joinedload(ActivationTokenModel.user))
+            .join(UserModel)
+            .where(
+                UserModel.email == activation_data.email,
+                ActivationTokenModel.token == activation_data.token
+            )
+        )
+        result = await db.execute(stmt)
+        token_record = result.scalars().first()
+
+        now_utc = datetime.now(timezone.utc)
+        if not token_record or cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc) < now_utc:
+            if token_record:
+                await db.delete(token_record)
+                await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired activation token."
+            )
+
+        user = token_record.user
+        if user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User account is already active."
+            )
+
+        user.is_active = True
+        await db.delete(token_record)
+        await db.commit()
+
+    login_link = "http://127.0.0.1/accounts/login/"
+
+    await email_sender.send_activation_complete_email(
+        str(activation_data.email),
+        login_link
+    )
+
+    return MessageResponseSchema(message="User account activated successfully.")
 
 
 
@@ -828,17 +870,18 @@ async def logout(
     Endpoint to logout user by deleting the associated refresh token.
 
     """
-    try:
-        token_type, token = authorization.split()
-        # If authorization.split() does not contain exactly two elements, a ValueError will be raised.
-        if token_type != "Bearer":
-            raise ValueError("Invalid token type")
-        token_dict = jwt_manager.decode_access_token(token)
-    except (InvalidTokenError, TokenExpiredError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+    token_dict = check_access_token(authorization, jwt_manager)
+    # try:
+    #     token_type, token = authorization.split()
+    #     # If authorization.split() does not contain exactly two elements, a ValueError will be raised.
+    #     if token_type != "Bearer":
+    #         raise ValueError("Invalid token type")
+    #     token_dict = jwt_manager.decode_access_token(token)
+    # except (InvalidTokenError, TokenExpiredError, ValueError):
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail="Invalid token"
+    #     )
     stmt = delete(RefreshTokenModel).where(RefreshTokenModel.user_id == token_dict["user_id"])
     await db.execute(stmt)
     await db.commit()
