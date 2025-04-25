@@ -337,12 +337,12 @@ async def test_activate_already_active_user(client, db_session, seed_user_groups
     activation_token = result_token.scalars().first()
     assert activation_token is not None, "Activation token should exist for the user."
 
-    # activation_payload = {
-    #     "email": registration_payload["email"],
-    #     "token": activation_token.token
-    # }
-    # activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
-    activation_response = await client.get(f"/api/v1/accounts/activate/?token={activation_token.token}")
+    activation_payload = {
+        "email": registration_payload["email"],
+        "token": activation_token.token
+    }
+    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+
     assert activation_response.status_code == 400, "Expected status code 400 for already active user."
     assert activation_response.json()["detail"] == "User account is already active.", (
         "Expected error message for already active user."
