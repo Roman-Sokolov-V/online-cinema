@@ -69,18 +69,6 @@ class EmailSender(EmailSenderInterface):
             raise BaseEmailError(
                 f"Failed to send email to {recipient}: {error}")
 
-    # async def send_activation_email(self, email: str, activation_link: str) -> None:
-    #     """
-    #     Send an account activation email asynchronously.
-    #
-    #     Args:
-    #         email (str): The recipient's email address.
-    #         activation_link (str): The activation link to be included in the email.
-    #     """
-    #     template = self._env.get_template(self._activation_email_template_name)
-    #     html_content = template.render(email=email, activation_link=activation_link)
-    #     subject = "Account Activation"
-    #     await self._send_email(email, subject, html_content)
 
     async def send_activation_email(
             self, email: str, activation_link: str, activation_token: str
@@ -91,6 +79,7 @@ class EmailSender(EmailSenderInterface):
         Args:
             email (str): The recipient's email address.
             activation_link (str): The activation link to be included in the email.
+            activation_token: (str): token to be included in the email.
         """
         template = self._env.get_template(self._activation_email_template_name)
         html_content = template.render(email=email,
