@@ -135,10 +135,10 @@ async def register_user(
         ) from e
     else:
         activation_link_post = BASE_LINK + "activate/"
-        await email_sender.send_activation_email_post(
-            new_user.email,
-            activation_link_post,
-            activation_token.token
+        await email_sender.send_activation_email(
+            email=new_user.email,
+            activation_link=activation_link_post,
+            activation_token=activation_token.token
         )
 
         return UserRegistrationResponseSchema.model_validate(new_user)
@@ -212,7 +212,8 @@ async def send_new_activation_token(
 
     await email_sender.send_activation_email(
         existing_user.email,
-        activation_link
+        activation_link,
+        activation_token
     )
     return UserRegistrationResponseSchema.model_validate(existing_user)
 
