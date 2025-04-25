@@ -182,13 +182,12 @@ async def test_activate_account_success(client, db_session, seed_user_groups):
     assert user.activation_token is not None and user.activation_token.token is not None, \
         "Activation token was not created in the database."
 
-    # activation_payload = {
-    #     "email": registration_payload["email"],
-    #     "token": user.activation_token.token
-    # }
+    activation_payload = {
+        "email": registration_payload["email"],
+        "token": user.activation_token.token
+    }
 
-    #activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
-    activation_response = await client.get(f"/api/v1/accounts/activate/?token={user.activation_token.token}")
+    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
     assert activation_response.status_code == 200, "Expected status code 200 for successful activation."
     assert activation_response.json()["message"] == "User account activated successfully."
 
