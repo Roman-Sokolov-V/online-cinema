@@ -482,12 +482,12 @@ async def test_reset_password_success(client, db_session, seed_user_groups):
     activation_token = result_token.scalars().first()
     assert activation_token is not None, "Activation token should be created in the database."
 
-    # activation_payload = {
-    #     "email": registration_payload["email"],
-    #     "token": activation_token.token
-    # }
-    # activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
-    activation_response = await client.get(f"/api/v1/accounts/activate/?token={activation_token.token}")
+    activation_payload = {
+        "email": registration_payload["email"],
+        "token": activation_token.token
+    }
+    activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
+
     assert activation_response.status_code == 200, "Expected status code 200 for successful activation."
 
     await db_session.refresh(created_user)
