@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, field_validator
 
 from database import accounts_validators
@@ -55,7 +57,22 @@ class UserRegistrationResponseSchema(BaseModel):
 
 class UserActivationRequestSchema(BaseModel):
     email: EmailStr
-    token: str
+    token: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {
+                    "self_activation": {
+                        "email": "user@example.com",
+                        "token": "abc123xyz"
+                    },
+                    "admin_activation": {
+                        "email": "user@example.com"
+                    }
+                }
+            ]
+        }
 
 
 class MessageResponseSchema(BaseModel):
