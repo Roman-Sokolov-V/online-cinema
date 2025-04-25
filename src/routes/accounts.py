@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-from typing import cast
+from typing import cast, Annotated
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Header
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ from database import (
     RefreshTokenModel
 )
 
-from exceptions import BaseSecurityError
+from exceptions import BaseSecurityError, InvalidTokenError, TokenExpiredError
 from notifications import EmailSenderInterface
 from schemas import (
     UserRegistrationRequestSchema,
@@ -30,7 +30,7 @@ from schemas import (
     UserLoginResponseSchema,
     UserLoginRequestSchema,
     TokenRefreshRequestSchema,
-    TokenRefreshResponseSchema
+    TokenRefreshResponseSchema, LogoutResponseSchema
 )
 from security.interfaces import JWTAuthManagerInterface
 
@@ -777,3 +777,69 @@ async def refresh_access_token(
     new_access_token = jwt_manager.create_access_token({"user_id": user_id})
 
     return TokenRefreshResponseSchema(access_token=new_access_token)
+
+
+@router.post(
+    "/logout/",
+    response_model=LogoutResponseSchema,
+    summary="Logout successful.",
+    description="Logs out the user by deleting the associated refresh token.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {
+            "description": "Logout successful. Refresh token has deleted",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Logout successful."
+                    }
+                }
+            },
+        },
+        422: {
+            "description": "Token is required but missing in the request header",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Missing token in the request header"
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Unauthorized – access token is missing, the token type is incorrect, "
+            "or the token is invalid or expired.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid token."
+                    }
+                }
+            },
+        },
+    },
+)
+async def logout(
+        authorization: Annotated[str, Header()],
+        db: AsyncSession = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+):
+    """
+    Endpoint to logout user by deleting the associated refresh token.
+
+    """
+    try:
+        token_type, token = authorization.split()
+        # If authorization.split() does not contain exactly two elements, a ValueError will be raised.
+        if token_type != "Bearer":
+            raise ValueError("Invalid token type")
+        token_dict = jwt_manager.decode_access_token(token)
+    except (InvalidTokenError, TokenExpiredError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    stmt = delete(RefreshTokenModel).where(RefreshTokenModel.user_id == token_dict["user_id"])
+    await db.execute(stmt)
+    await db.commit()
+    return {"message": "Logout successful."}
