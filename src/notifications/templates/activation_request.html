@@ -12,15 +12,17 @@
     A registration request was made using your email:
     <strong id="email" style="color: #4CAF50;">{{ email }}</strong>.
   </p>
+
   <p style="margin: 10px 0; line-height: 1.6; font-size: 16px;">
-    To complete your registration, please use the activation token below:
-  </p>
-  <p style="margin: 20px 0; text-align: center;">
-    <a id="link" href="{{ activation_link }}" style="display: inline-block; background-color: #4CAF50; color: #ffffff;
-            text-decoration: none; font-size: 16px; padding: 10px 20px; border-radius: 4px;">
-     Activate Your Account
-    </a>
-  </p>
+      To complete your registration, please use the activation token below:
+    </p>
+    <p style="margin: 20px 0; text-align: center;">
+      <a href="#" onclick="sendJson(); return false;" style="display: inline-block; background-color: #4CAF50; color: #ffffff;
+              text-decoration: none; font-size: 16px; padding: 10px 20px; border-radius: 4px;">
+       Activate Your Account
+      </a>
+    </p>
+
   <p style="margin: 10px 0; line-height: 1.6; font-size: 16px; color: #666666;">
     If this wasn't you, please ignore this email.
   </p>
@@ -31,5 +33,41 @@
     The Mate team
   </p>
 </div>
+
+<script>
+  function sendJson() {
+    const data = {
+      email: "{{ email }}",
+      token: "{{ activation_token }}"
+    };
+
+
+    const activationUrl = "{{ activation_link }}";
+
+    fetch(activationUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    })
+    .then(response => {
+      if (response.ok) {
+        alert("Account successfully activated!");
+        window.location.href = response.url;
+      } else {
+
+        response.json().then(data => {
+          alert("Activation failed. Error: " + JSON.stringify(data));
+          console.error("Error details:", data);
+        });
+      }
+    })
+    .finally(() => {
+      console.log('Request completed');
+    });
+  }
+</script>
+
 </body>
 </html>
