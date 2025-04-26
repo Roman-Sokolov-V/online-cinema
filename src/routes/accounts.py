@@ -134,10 +134,10 @@ async def register_user(
             detail="An error occurred during user creation."
         ) from e
     else:
-        activation_link_post = BASE_LINK + "activate/"
+        activation_link = BASE_LINK + "activate/"
         await email_sender.send_activation_email(
             email=new_user.email,
-            activation_link=activation_link_post,
+            activation_link=activation_link,
             activation_token=activation_token.token
         )
 
@@ -208,12 +208,11 @@ async def send_new_activation_token(
     await db.commit()
     await db.refresh(activation_token)
 
-    activation_link = BASE_LINK + f"activate/?token={activation_token.token}"
-
+    activation_link = BASE_LINK + "activate/"
     await email_sender.send_activation_email(
-        existing_user.email,
-        activation_link,
-        activation_token
+        email=existing_user.email,
+        activation_link=activation_link,
+        activation_token=activation_token.token
     )
     return UserRegistrationResponseSchema.model_validate(existing_user)
 
