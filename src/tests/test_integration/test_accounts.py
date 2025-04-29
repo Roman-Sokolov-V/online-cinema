@@ -2,7 +2,6 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 
 import pytest
-import pytest_asyncio
 from sqlalchemy import select, delete, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
@@ -16,9 +15,9 @@ from database import (
     UserGroupEnum,
     RefreshTokenModel
 )
-from security.interfaces import JWTAuthManagerInterface
-from security.token_manager import JWTAuthManager
+
 from config import get_jwt_auth_manager
+
 
 @pytest.mark.asyncio
 async def test_register_user_success(client, db_session, seed_user_groups):
@@ -166,95 +165,13 @@ async def test_register_user_internal_server_error(client, seed_user_groups):
                    "detail"] == expected_message, f"Expected error message: {expected_message}"
 
 
-#########################################################
-
-@pytest_asyncio.fixture
-async def register_user(client, db_session, seed_user_groups):
-    """
-    Фабрика для реєстрації користувача.
-
-    Повертає функцію, яка приймає registration_payload і створює користувача.
-    """
-
-    async def _create_user(
-            registration_payload: dict = {
-                "email": "testuser@example.com",
-                "password": "StrongPassword123!"
-            }
-    ):
-        registration_response = await client.post("/api/v1/accounts/register/",
-                                                  json=registration_payload)
-        assert registration_response.status_code == 201
-        stmt = (
-            select(UserModel)
-            .options(joinedload(UserModel.activation_token))
-            .where(UserModel.email == registration_payload["email"])
-        )
-        result = await db_session.execute(stmt)
-        user = result.scalars().first()
-
-        activation_payload = {
-            "email": registration_payload["email"],
-            "token": user.activation_token.token
-        }
-        return activation_payload, user
-
-    return _create_user
-
-
-@pytest_asyncio.fixture
-async def create_and_login_user(client, db_session, seed_user_groups,
-                                register_user):
-    """
-    Реєструє адміністратора, активує його обліковий запис,
-    додає до групи 'admin' та повертає access_token і об'єкт користувача.
-
-    :returns: Tuple (access_token: str, admin: UserModel)
-    """
-
-    async def _login_user(group_name: str = "user"):
-        registration_payload = {
-            "email": f"{group_name}@example.com",
-            "password": "StrongPassword123!"
-        }
-
-        activation_payload, user = await register_user(registration_payload)
-
-        # Активуємо користувача вручну
-        user.is_active = True
-
-        # Знаходимо групу
-        stmt = select(UserGroupModel.id).where(
-            UserGroupModel.name == group_name)
-        result = await db_session.execute(stmt)
-        id_group = result.scalars().first()
-
-        assert id_group is not None, "Admin group must exist in the database."
-
-        # Призначаємо користувачу групу "admin"
-        user.group_id = id_group
-
-        await db_session.commit()
-        await db_session.refresh(user)
-        # Логінимось
-        login_response = await client.post("/api/v1/accounts/login/",
-                                           json=registration_payload)
-        assert login_response.status_code == 201, "Expected status code 201 for successful login."
-
-        # Отримуємо токен
-        data = login_response.json()
-        access_token = data["access_token"]
-
-        return access_token, user
-
-    return _login_user
-
-
 @pytest.mark.asyncio
-async def test_activate_account_success_with_activation_token(client,
-                                                              db_session,
-                                                              seed_user_groups,
-                                                              register_user):
+async def test_activate_account_success_with_activation_token(
+        client,
+        db_session,
+        seed_user_groups,
+        register_user
+):
     """
     Test successful activation of a user account.
 
@@ -410,6 +327,7 @@ async def test_activate_account_with_not_admin_access_token(
     token = result.scalars().first()
     assert token is not None, "Activation token should not be deleted after unsuccessful activation."
 
+
 @pytest.mark.asyncio
 async def test_activate_account_with_expired_admin_access_token(
         client,
@@ -458,7 +376,6 @@ async def test_activate_account_with_expired_admin_access_token(
         .where(ActivationTokenModel.user_id == user.id)
     )
     assert token is not None, "Activation token should not be deleted after unsuccessful activation."
-
 
 
 @pytest.mark.asyncio
@@ -1419,8 +1336,9 @@ async def test_new_activation_latter_send_success(client, db_session,
 
 
 @pytest.mark.asyncio
-async def test_new_activation_latter_user_not_found(client, db_session,
-                                                    seed_user_groups):
+async def test_new_activation_latter_user_not_found(
+        client, db_session, seed_user_groups
+):
     """
     Test endpoint if user with received email is not exists in database
     """
@@ -1435,14 +1353,16 @@ async def test_new_activation_latter_user_not_found(client, db_session,
     stmt_token = select(ActivationTokenModel)
     result = await db_session.execute(stmt_token)
     token = result.scalars().all()
-    assert len(
-        token) == 0, "activation token should not be created if user with recived email not exists"
+    assert (
+        len(token) == 0,
+        "activation token should not be created if user with recived email not exists"
+    )
 
 
 @pytest.mark.asyncio
-async def test_new_activation_latter_with_not_valid_password(client,
-                                                             db_session,
-                                                             seed_user_groups):
+async def test_new_activation_latter_with_not_valid_password(
+        client, db_session, seed_user_groups
+):
     """
     Test endpoint if password is not valid
     """
@@ -1473,9 +1393,9 @@ async def test_new_activation_latter_with_not_valid_password(client,
 
 
 @pytest.mark.asyncio
-async def test_new_activation_latter_if_user_already_activated(client,
-                                                               db_session,
-                                                               seed_user_groups):
+async def test_new_activation_latter_if_user_already_activated(
+        client, db_session, seed_user_groups
+):
     """
     Test endpoint if account is already activated
     """
@@ -1500,49 +1420,6 @@ async def test_new_activation_latter_if_user_already_activated(client,
     assert user.activation_token is None, "If user is already active, activation_token should be deleted"
 
 
-@pytest.fixture
-async def active_and_login_user(client, db_session, seed_user_groups):
-    """
-    Registers the user, activates it, login and returns Access/Refresh tokens.
-    """
-    payload = {
-        "email": "testuser@example.com",
-        "password": "StrongPassword123!"
-    }
-
-    # Register
-    response = await client.post("/api/v1/accounts/register/", json=payload)
-    assert response.status_code == 201
-
-    # Activate
-    stmt = select(UserModel).where(UserModel.email == payload["email"])
-    result = await db_session.execute(stmt)
-    user = result.scalars().first()
-    user.is_active = True
-    await db_session.commit()
-
-    # Login
-    response = await client.post("/api/v1/accounts/login/", json=payload)
-    assert response.status_code == 201
-    data = response.json()
-    access_token = data["access_token"]
-    refresh_token = data["refresh_token"]
-
-    # Check refresh_token in db
-    stmt = select(RefreshTokenModel).where(
-        RefreshTokenModel.user_id == user.id)
-    result = await db_session.execute(stmt)
-    db_refresh_token = result.scalars().first()
-    assert db_refresh_token.token == refresh_token
-
-    return {
-        "user": user,
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "payload": payload,
-    }
-
-
 async def is_refresh_token_deleted(db_session, user_id: int) -> bool:
     """
     If refresh token no exists return True, else False
@@ -1555,11 +1432,11 @@ async def is_refresh_token_deleted(db_session, user_id: int) -> bool:
 
 
 @pytest.mark.asyncio
-async def test_logout_success(client, db_session, active_and_login_user):
+async def test_logout_success(client, db_session, activate_and_login_user):
     """
     Test logout endpoint with valid token.
     """
-    access_token = active_and_login_user["access_token"]
+    access_token = activate_and_login_user["access_token"]
 
     # Logout
     response = await client.post(
@@ -1569,12 +1446,12 @@ async def test_logout_success(client, db_session, active_and_login_user):
     assert response.status_code == 200, "Expected status code 200."
 
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, active_and_login_user[
+    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
         "user"].id) is True, "refresh_token should be deleted"
 
 
 @pytest.mark.asyncio
-async def test_logout_no_header(client, db_session, active_and_login_user):
+async def test_logout_no_header(client, db_session, activate_and_login_user):
     """
     Test logout endpoint with no header.
     """
@@ -1586,16 +1463,16 @@ async def test_logout_no_header(client, db_session, active_and_login_user):
     assert response.status_code == 422, "Expected status code 422."
 
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, active_and_login_user[
+    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
         "user"].id) is False, "refresh_token should not be deleted"
 
 
 @pytest.mark.asyncio
-async def test_logout_no_header(client, db_session, active_and_login_user):
+async def test_logout_no_header(client, db_session, activate_and_login_user):
     """
     Test logout endpoint with incorrect structure header
     """
-    access_token = active_and_login_user["access_token"]
+    access_token = activate_and_login_user["access_token"]
     # Logout
     response = await client.post(
         "/api/v1/accounts/logout/",
@@ -1604,7 +1481,7 @@ async def test_logout_no_header(client, db_session, active_and_login_user):
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is not deleted
-    assert await is_refresh_token_deleted(db_session, active_and_login_user[
+    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
         "user"].id) is False, "refresh_token should not be deleted"
 
     response = await client.post(
@@ -1614,7 +1491,7 @@ async def test_logout_no_header(client, db_session, active_and_login_user):
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is not deleted
-    assert await is_refresh_token_deleted(db_session, active_and_login_user[
+    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
         "user"].id) is False, "refresh_token should not be deleted"
 
     response = await client.post(
@@ -1624,23 +1501,13 @@ async def test_logout_no_header(client, db_session, active_and_login_user):
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, active_and_login_user[
+    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
         "user"].id) is False, "refresh_token should not be deleted"
-
-
-@pytest.fixture
-def jwt_manager() -> JWTAuthManagerInterface:
-    settings = get_settings()
-    return JWTAuthManager(
-        secret_key_access=settings.SECRET_KEY_ACCESS,
-        secret_key_refresh=settings.SECRET_KEY_REFRESH,
-        algorithm=settings.JWT_SIGNING_ALGORITHM
-    )
 
 
 @pytest.mark.asyncio
 async def test_logout_invalid_token(
-        client, db_session, active_and_login_user, jwt_manager
+        client, db_session, activate_and_login_user, jwt_manager
 ):
     """
     Test logout endpoint with incorrect token
@@ -1654,11 +1521,11 @@ async def test_logout_invalid_token(
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, active_and_login_user[
+    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
         "user"].id) is False, "refresh_token should not be deleted"
 
     valid_expired_token = jwt_manager.create_access_token(
-        data={"user_id": active_and_login_user["user"].id},
+        data={"user_id": activate_and_login_user["user"].id},
         expires_delta=timedelta(seconds=-1))
 
     response = await client.post(
@@ -1668,5 +1535,8 @@ async def test_logout_invalid_token(
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, active_and_login_user[
+    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
         "user"].id) is False, "refresh_token should not be deleted"
+
+# @pytest.mark.asyncio
+# async def reset_password_with_valid_credentials(client, db_session, activate_and_login_user):

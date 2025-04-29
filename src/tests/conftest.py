@@ -1,14 +1,16 @@
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
-from config import get_settings, get_accounts_email_notificator, get_s3_storage_client
+from config import get_settings, get_accounts_email_notificator, \
+    get_s3_storage_client
 from database import (
     reset_database,
     get_db_contextmanager,
     UserGroupEnum,
-    UserGroupModel
+    UserGroupModel, RefreshTokenModel
 )
 from database.populate import CSVDatabaseSeeder
 from main import app
@@ -17,6 +19,8 @@ from security.token_manager import JWTAuthManager
 from storages import S3StorageClient
 from tests.doubles.fakes.storage import FakeS3Storage
 from tests.doubles.stubs.emails import StubEmailSender
+
+from database import UserModel
 
 
 def pytest_configure(config):
@@ -110,10 +114,12 @@ async def client(email_sender_stub, s3_storage_fake):
 
     Overrides the dependencies for email sender and S3 storage with test doubles.
     """
-    app.dependency_overrides[get_accounts_email_notificator] = lambda: email_sender_stub
+    app.dependency_overrides[
+        get_accounts_email_notificator] = lambda: email_sender_stub
     app.dependency_overrides[get_s3_storage_client] = lambda: s3_storage_fake
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as async_client:
+    async with AsyncClient(transport=ASGITransport(app=app),
+                           base_url="http://test") as async_client:
         yield async_client
 
     app.dependency_overrides.clear()
@@ -126,7 +132,8 @@ async def e2e_client():
 
     This client is available at the session scope.
     """
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as async_client:
+    async with AsyncClient(transport=ASGITransport(app=app),
+                           base_url="http://test") as async_client:
         yield async_client
 
 
@@ -203,9 +210,145 @@ async def seed_database(db_session):
     :type db_session: AsyncSession
     """
     settings = get_settings()
-    seeder = CSVDatabaseSeeder(csv_file_path=settings.PATH_TO_MOVIES_CSV, db_session=db_session)
+    seeder = CSVDatabaseSeeder(csv_file_path=settings.PATH_TO_MOVIES_CSV,
+                               db_session=db_session)
 
     if not await seeder.is_db_populated():
         await seeder.seed()
 
     yield db_session
+
+
+@pytest_asyncio.fixture
+async def register_user(client, db_session, seed_user_groups):
+    """
+    Фабрика для реєстрації користувача.
+
+    Повертає функцію, яка приймає registration_payload і створює користувача.
+    """
+
+    async def _create_user(
+            registration_payload: dict = {
+                "email": "testuser@example.com",
+                "password": "StrongPassword123!"
+            }
+    ):
+        registration_response = await client.post("/api/v1/accounts/register/",
+                                                  json=registration_payload)
+        assert registration_response.status_code == 201
+        stmt = (
+            select(UserModel)
+            .options(joinedload(UserModel.activation_token))
+            .where(UserModel.email == registration_payload["email"])
+        )
+        result = await db_session.execute(stmt)
+        user = result.scalars().first()
+
+        activation_payload = {
+            "email": registration_payload["email"],
+            "token": user.activation_token.token
+        }
+        return activation_payload, user
+
+    return _create_user
+
+
+@pytest_asyncio.fixture
+async def create_and_login_user(client, db_session, seed_user_groups,
+                                register_user):
+    """
+    Реєструє адміністратора, активує його обліковий запис,
+    додає до групи 'admin' та повертає access_token і об'єкт користувача.
+
+    :returns: Tuple (access_token: str, admin: UserModel)
+    """
+
+    async def _login_user(group_name: str = "user"):
+        registration_payload = {
+            "email": f"{group_name}@example.com",
+            "password": "StrongPassword123!"
+        }
+
+        activation_payload, user = await register_user(registration_payload)
+
+        # Активуємо користувача вручну
+        user.is_active = True
+
+        # Знаходимо групу
+        stmt = select(UserGroupModel.id).where(
+            UserGroupModel.name == group_name)
+        result = await db_session.execute(stmt)
+        id_group = result.scalars().first()
+
+        assert id_group is not None, "Admin group must exist in the database."
+
+        # Призначаємо користувачу групу "admin"
+        user.group_id = id_group
+
+        await db_session.commit()
+        await db_session.refresh(user)
+        # Логінимось
+        login_response = await client.post("/api/v1/accounts/login/",
+                                           json=registration_payload)
+        assert login_response.status_code == 201, "Expected status code 201 for successful login."
+
+        # Отримуємо токен
+        data = login_response.json()
+        access_token = data["access_token"]
+
+        return access_token, user
+
+    return _login_user
+
+
+@pytest_asyncio.fixture
+async def activate_and_login_user(client, db_session, seed_user_groups):
+    """
+    Registers the user, activates it, login and returns Access/Refresh tokens.
+    """
+    payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!"
+    }
+
+    # Register
+    response = await client.post("/api/v1/accounts/register/", json=payload)
+    assert response.status_code == 201
+
+    # Activate
+    stmt = select(UserModel).where(UserModel.email == payload["email"])
+    result = await db_session.execute(stmt)
+    user = result.scalars().first()
+    user.is_active = True
+    await db_session.commit()
+
+    # Login
+    response = await client.post("/api/v1/accounts/login/", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    access_token = data["access_token"]
+    refresh_token = data["refresh_token"]
+
+    # Check refresh_token in db
+    stmt = select(RefreshTokenModel).where(
+        RefreshTokenModel.user_id == user.id)
+    result = await db_session.execute(stmt)
+    db_refresh_token = result.scalars().first()
+    assert db_refresh_token.token == refresh_token
+
+    return {
+        "user": user,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "payload": payload,
+    }
+
+
+@pytest_asyncio.fixture
+def jwt_manager() -> JWTAuthManagerInterface:
+    settings = get_settings()
+    return JWTAuthManager(
+        secret_key_access=settings.SECRET_KEY_ACCESS,
+        secret_key_refresh=settings.SECRET_KEY_REFRESH,
+        algorithm=settings.JWT_SIGNING_ALGORITHM
+    )
