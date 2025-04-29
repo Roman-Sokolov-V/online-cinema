@@ -258,12 +258,18 @@ async def create_activate_login_user(
         client, db_session, seed_user_groups, register_user
 ):
     """
-    Реєструє коаистувача, активує його обліковий запис,
-    додає до групи визначеної групи ("user" за замовченням)
-    та повертає access_token і об'єкт користувача.
+    Register a user, activates his account,
+    adds to a group of a certain group ("user" by default)
+    and returns access_token, refresh_token, user, payload.
 
-    :returns: Tuple (access_token: str, admin: UserModel)
+    :returns: dict {
+        user: UserModel,
+        access_token: str,
+        refresh_token: str,
+        payload: Dict {email: str, password: str}
+    }
     """
+
 
     async def _login_user(group_name: str = "user"):
         registration_payload = {
@@ -295,19 +301,17 @@ async def create_activate_login_user(
         )
         assert login_response.status_code == 201, "Expected status code 201 for successful login."
 
-        # Отримуємо токен
+        # Отримуємо токени
         data = login_response.json()
         access_token = data["access_token"]
         refresh_token = data["refresh_token"]
 
-        #return access_token, user
         return {
             "user": user,
             "access_token": access_token,
             "refresh_token": refresh_token,
             "payload": registration_payload,
         }
-
     return _login_user
 
 
