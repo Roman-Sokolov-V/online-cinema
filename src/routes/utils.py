@@ -72,9 +72,14 @@ def get_access_token_payload(
 ) -> AccessTokenPayload:
     try:
         token_payload = jwt_manager.decode_access_token(token)
-    except (InvalidTokenError, TokenExpiredError):
+    except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
+        )
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired."
         )
     return token_payload
