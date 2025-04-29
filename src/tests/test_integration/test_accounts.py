@@ -1564,3 +1564,77 @@ async def test_reset_password_with_valid_credentials(
     await db_session.refresh(user)
     assert user.verify_password(new_password) is True, "new password should be hashed and created in db"
 
+
+@pytest.mark.asyncio
+async def test_reset_password_with_invalid_old_password(
+        client, db_session, create_activate_login_user
+):
+    user_data = await create_activate_login_user()
+    user = user_data["user"]
+    old_password = user_data["payload"]["password"]
+    new_password = "NewStrongPassword123!"
+    print(user_data["payload"])
+    request_data = {
+        "email": user_data["payload"]["email"],
+        "current_password": "incorrectStrongPassword123!",
+        "password": new_password
+
+    }
+    response = await client.post(
+        "/api/v1/accounts/change-password/",
+        json=request_data
+    )
+    assert response.status_code == 400, "Expected status code 400 if provided incorect current password."
+    await db_session.refresh(user)
+    assert user.verify_password(old_password) is True, "Password in DB must remain unchanged after invalid attempt"
+
+
+@pytest.mark.asyncio
+async def test_reset_password_without_old_password(
+        client, db_session, create_activate_login_user
+):
+    user_data = await create_activate_login_user()
+    user = user_data["user"]
+    old_password = user_data["payload"]["password"]
+    new_password = "NewStrongPassword123!"
+    print(user_data["payload"])
+    request_data = {
+        "email": user_data["payload"]["email"],
+        "password": new_password
+    }
+    response = await client.post(
+        "/api/v1/accounts/change-password/",
+        json=request_data
+    )
+    assert response.status_code == 422, "Expected 422 due to missing current_password field in request payload"
+    response_json = response.json()
+    assert (
+        "current_password" in response_json["detail"][0]["loc"],
+        "Error should be related to missing 'current_password'"
+    )
+    await db_session.refresh(user)
+    assert user.verify_password(old_password) is True, "Password in DB must remain unchanged after invalid attempt"
+
+
+@pytest.mark.asyncio
+async def test_reset_password_with_not_existing_email(
+        client, db_session, create_activate_login_user
+):
+    user_data = await create_activate_login_user()
+    user = user_data["user"]
+    old_password = user_data["payload"]["password"]
+    new_password = "NewStrongPassword123!"
+    print(user_data["payload"])
+    request_data = {
+        "email": "not_existing@example.com",
+        "current_password": user_data["payload"]["password"],
+        "password": new_password
+
+    }
+    response = await client.post(
+        "/api/v1/accounts/change-password/",
+        json=request_data
+    )
+    assert response.status_code == 400, "Expected status code 400 if provided not existing email."
+    await db_session.refresh(user)
+    assert user.verify_password(old_password) is True, "Password in DB must remain unchanged after invalid attempt"
