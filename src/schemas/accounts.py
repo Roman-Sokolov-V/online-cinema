@@ -93,4 +93,4 @@ class LogoutResponseSchema(BaseModel):
 
 
 class PasswordChangeRequestSchema(BaseEmailPasswordSchema):
-    old_password: str
+    current_password: str
