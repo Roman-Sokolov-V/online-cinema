@@ -254,11 +254,13 @@ async def register_user(client, db_session, seed_user_groups):
 
 
 @pytest_asyncio.fixture
-async def create_and_login_user(client, db_session, seed_user_groups,
-                                register_user):
+async def create_activate_login_user(
+        client, db_session, seed_user_groups, register_user
+):
     """
-    Реєструє адміністратора, активує його обліковий запис,
-    додає до групи 'admin' та повертає access_token і об'єкт користувача.
+    Реєструє коаистувача, активує його обліковий запис,
+    додає до групи визначеної групи ("user" за замовченням)
+    та повертає access_token і об'єкт користувача.
 
     :returns: Tuple (access_token: str, admin: UserModel)
     """
@@ -288,60 +290,25 @@ async def create_and_login_user(client, db_session, seed_user_groups,
         await db_session.commit()
         await db_session.refresh(user)
         # Логінимось
-        login_response = await client.post("/api/v1/accounts/login/",
-                                           json=registration_payload)
+        login_response = await client.post(
+            "/api/v1/accounts/login/", json=registration_payload
+        )
         assert login_response.status_code == 201, "Expected status code 201 for successful login."
 
         # Отримуємо токен
         data = login_response.json()
         access_token = data["access_token"]
+        refresh_token = data["refresh_token"]
 
-        return access_token, user
+        #return access_token, user
+        return {
+            "user": user,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "payload": registration_payload,
+        }
 
     return _login_user
-
-
-@pytest_asyncio.fixture
-async def activate_and_login_user(client, db_session, seed_user_groups):
-    """
-    Registers the user, activates it, login and returns Access/Refresh tokens.
-    """
-    payload = {
-        "email": "testuser@example.com",
-        "password": "StrongPassword123!"
-    }
-
-    # Register
-    response = await client.post("/api/v1/accounts/register/", json=payload)
-    assert response.status_code == 201
-
-    # Activate
-    stmt = select(UserModel).where(UserModel.email == payload["email"])
-    result = await db_session.execute(stmt)
-    user = result.scalars().first()
-    user.is_active = True
-    await db_session.commit()
-
-    # Login
-    response = await client.post("/api/v1/accounts/login/", json=payload)
-    assert response.status_code == 201
-    data = response.json()
-    access_token = data["access_token"]
-    refresh_token = data["refresh_token"]
-
-    # Check refresh_token in db
-    stmt = select(RefreshTokenModel).where(
-        RefreshTokenModel.user_id == user.id)
-    result = await db_session.execute(stmt)
-    db_refresh_token = result.scalars().first()
-    assert db_refresh_token.token == refresh_token
-
-    return {
-        "user": user,
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "payload": payload,
-    }
 
 
 @pytest_asyncio.fixture
