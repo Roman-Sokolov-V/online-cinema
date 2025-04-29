@@ -41,3 +41,15 @@ def is_admin_group(
             detail="You are not admin."
         )
     return payload
+
+
+def is_owner_or_admin(
+        user_id: int,
+        payload: AccessTokenPayload = Depends(get_access_token_payload),
+
+):
+    if payload["user_id"] != user_id and payload["group"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be owner or admin to update profile"
+        )
