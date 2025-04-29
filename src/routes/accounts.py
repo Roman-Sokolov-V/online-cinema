@@ -899,7 +899,7 @@ async def change_password(
     user = result.scalars().first()
 
     if not user or not user.is_active or not user.verify_password(
-            data.old_password):
+            data.current_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Bad Request - The provided email or current password is invalid."
