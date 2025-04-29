@@ -1542,5 +1542,25 @@ async def test_logout_invalid_token(
     assert await is_refresh_token_deleted(db_session, logged_user_data[
         "user"].id) is False, "refresh_token should not be deleted"
 
-# @pytest.mark.asyncio
-# async def reset_password_with_valid_credentials(client, db_session, activate_and_login_user):
+@pytest.mark.asyncio
+async def test_reset_password_with_valid_credentials(
+        client, db_session, create_activate_login_user
+):
+    user_data = await create_activate_login_user()
+    user = user_data["user"]
+    new_password = "NewStrongPassword123!"
+    print(user_data["payload"])
+    request_data = {
+        "email": user_data["payload"]["email"],
+        "current_password": user_data["payload"]["password"],
+        "password": new_password
+
+    }
+    response = await client.post(
+        "/api/v1/accounts/change-password/",
+        json=request_data
+    )
+    assert response.status_code == 200, "Expected status code 200 for successful reset password."
+    await db_session.refresh(user)
+    assert user.verify_password(new_password) is True, "new password should be hashed and created in db"
+
