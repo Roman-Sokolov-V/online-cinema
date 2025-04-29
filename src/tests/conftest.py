@@ -4,13 +4,16 @@ from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from io import BytesIO
+from PIL import Image
+
 from config import get_settings, get_accounts_email_notificator, \
     get_s3_storage_client
 from database import (
     reset_database,
     get_db_contextmanager,
     UserGroupEnum,
-    UserGroupModel, RefreshTokenModel
+    UserGroupModel, RefreshTokenModel, UserProfileModel
 )
 from database.populate import CSVDatabaseSeeder
 from main import app
@@ -323,3 +326,52 @@ def jwt_manager() -> JWTAuthManagerInterface:
         secret_key_refresh=settings.SECRET_KEY_REFRESH,
         algorithm=settings.JWT_SIGNING_ALGORITHM
     )
+
+
+@pytest_asyncio.fixture
+async def create_user_and_profile(
+        db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
+):
+    """
+    Positive test for updating a user profile.
+
+    Steps:
+    1. Create a test user and activate them.
+    2. Generate an access token using `jwt_manager`.
+    3. Create user profile using create_profile endpoint
+    return: tuple(user: UserModel, headers: dict)
+    """
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    stmt = select(UserModel).where(UserModel.email == "test@mate.com")
+    result = await db_session.execute(stmt)
+    user = result.scalars().first()
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
+    img = Image.new("RGB", (100, 100), color="blue")
+    img_bytes = BytesIO()
+    img.save(img_bytes, format="JPEG")
+    img_bytes.seek(0)
+
+    avatar_key = f"avatars/{user.id}_avatar.jpg"
+    profile_url = f"/api/v1/profiles/users/{user.id}/profile/"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    files = {
+        "first_name": (None, "John"),
+        "last_name": (None, "Doe"),
+        "gender": (None, "man"),
+        "date_of_birth": (None, "1990-01-01"),
+        "info": (None, "This is a test profile."),
+        "avatar": ("avatar.jpg", img_bytes, "image/jpeg"),
+    }
+
+    response = await client.post(profile_url, headers=headers, files=files)
+
+    expected_url = f"http://fake-s3.local/{avatar_key}"
+    actual_url = await s3_storage_fake.get_file_url(avatar_key)
+    stmt = select(UserProfileModel).where(UserProfileModel.user == user)
+    result = await db_session.execute(stmt)
+    profile = result.scalars().first()
+
+    return user, headers, profile
