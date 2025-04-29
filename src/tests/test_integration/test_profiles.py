@@ -804,7 +804,7 @@ async def test_update_user_profile_invalid_auth(
         create_user_and_profile
 ):
     """
-    Test profile creation with missing or incorrectly formatted Authorization header.
+    Test update profile with missing or incorrectly formatted Authorization header.
 
     Expected result:
     - The request should fail with 401 Unauthorized.
@@ -815,7 +815,7 @@ async def test_update_user_profile_invalid_auth(
     2. Incorrect Authorization format (e.g., "Token invalid_token").
     """
     user, _, profile = create_user_and_profile
-    profile_url = "/api/v1/profiles/users/1/profile/"
+    profile_url = f"/api/v1/profiles/users/{user.id}/profile/"
 
     response = await client.patch(profile_url, headers=headers)
     assert (
@@ -827,3 +827,48 @@ async def test_update_user_profile_invalid_auth(
         f"Unexpected error message: {response.json()['detail']}"
     )
 
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_update_user_profile_expired_token(
+        client,
+        jwt_manager,
+        create_user_and_profile
+):
+    """
+    Test update profile with an expired access token.
+
+    Expected result:
+    - The request should fail with 401 Unauthorized.
+    - The error message should be: "Token has expired."
+    """
+    user, _, profile = create_user_and_profile
+
+    expired_time = datetime.now() - timedelta(days=1)
+    with patch("security.token_manager.datetime") as mock_datetime:
+        mock_datetime.now.return_value = expired_time
+        expired_token = jwt_manager.create_access_token({"user_id": user.id})
+
+    profile_url = f"/api/v1/profiles/users/{user.id}/profile/"
+    headers = {"Authorization": f"Bearer {expired_token}"}
+
+    img = Image.new("RGB", (100, 100), color="blue")
+    img_bytes = BytesIO()
+    img.save(img_bytes, format="JPEG")
+    img_bytes.seek(0)
+
+    files = {
+        "first_name": (None, "John"),
+        "last_name": (None, "Doe"),
+        "gender": (None, "man"),
+        "date_of_birth": (None, "1990-01-01"),
+        "info": (None, "Test profile."),
+        "avatar": ("avatar.jpg", img_bytes, "image/jpeg"),
+    }
+
+    response = await client.patch(profile_url, headers=headers, files=files)
+    assert response.status_code == 401, f"Expected 401, got {response.status_code}"
+    assert (
+        response.json()["detail"] == "Token has expired.",
+        f"Unexpected error message: {response.json()['detail']}"
+    )
