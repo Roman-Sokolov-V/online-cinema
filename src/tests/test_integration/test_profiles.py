@@ -725,8 +725,12 @@ async def test_update_one_field_user_profile_with_fake_s3(
 
 @pytest.mark.asyncio
 async def test_update_all_fields_user_profile_with_fake_s3(
-        db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake,
-        client, create_user_and_profile
+        db_session,
+        seed_user_groups,
+        reset_db,
+        s3_storage_fake,
+        client,
+        create_user_and_profile
 ):
     """
     Positive test for updating a user profile.
@@ -778,4 +782,48 @@ async def test_update_all_fields_user_profile_with_fake_s3(
     assert profile.info == "Just another text.", "Profile info is incorrect!"
     assert profile.avatar == avatar_key, "Avatar key in database does not match!"
 
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "headers, expected_status, expected_detail",
+    [
+        (None, 401, "Authorization header is missing"),
+        (
+                {"Authorization": "Token invalid_token"},
+                401,
+                "Invalid Authorization header format. Expected 'Bearer <token>'"
+        ),
+    ],
+)
+async def test_update_user_profile_invalid_auth(
+        client,
+        headers,
+        expected_status,
+        expected_detail,
+        create_user_and_profile
+):
+    """
+    Test profile creation with missing or incorrectly formatted Authorization header.
+
+    Expected result:
+    - The request should fail with 401 Unauthorized.
+    - The appropriate error message should be returned.
+
+    This test runs twice with:
+    1. No Authorization header at all.
+    2. Incorrect Authorization format (e.g., "Token invalid_token").
+    """
+    user, _, profile = create_user_and_profile
+    profile_url = "/api/v1/profiles/users/1/profile/"
+
+    response = await client.patch(profile_url, headers=headers)
+    assert (
+        response.status_code == expected_status,
+        f"Expected {expected_status}, got {response.status_code}"
+    )
+    assert (
+        response.json()["detail"] == expected_detail,
+        f"Unexpected error message: {response.json()['detail']}"
+    )
 
