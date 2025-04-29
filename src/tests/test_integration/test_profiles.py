@@ -872,3 +872,133 @@ async def test_update_user_profile_expired_token(
         response.json()["detail"] == "Token has expired.",
         f"Unexpected error message: {response.json()['detail']}"
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_admin_update_user_profile(
+        db_session,
+        seed_user_groups,
+        reset_db,
+        jwt_manager,
+        s3_storage_fake,
+        client,
+        create_user_and_profile,
+        create_activate_login_user
+):
+    """
+    Test that an admin can create a profile for another user.
+
+    Steps:
+    1. Create an admin user and a regular user.
+    2. Generate an access token for the admin.
+    3. Send a request to create a profile for the regular user.
+    4. Verify that the avatar was uploaded to FakeS3Storage.
+    5. Verify that the profile was created in the database.
+    """
+    user, _, profile = create_user_and_profile
+    profile_url = f"/api/v1/profiles/users/{user.id}/profile/"
+    admin_data = await create_activate_login_user(group_name="admin")
+    admin_access_token = admin_data["access_token"]
+    headers = {"Authorization": f"Bearer {admin_access_token}"}
+
+    avatar_key = f"avatars/{user.id}_new_avatar.jpg"
+
+    new_img = Image.new("RGB", (100, 100), color="red")
+    new_img_bytes = BytesIO()
+    new_img.save(new_img_bytes, format="JPEG")
+    new_img_bytes.seek(0)
+
+    update_files = {
+        "first_name": (None, "Sally"),
+        "last_name": (None, "Thompson"),
+        "gender": (None, "woman"),
+        "date_of_birth": (None, "1991-02-02"),
+        "info": (None, "Just another text."),
+        "avatar": ("new_avatar.jpg", new_img_bytes, "image/jpeg"),
+    }
+    response = await client.patch(profile_url, headers=headers,
+                                  files=update_files)
+    await db_session.refresh(profile)
+    assert response.status_code == 200, f"Expected 201, got {response.status_code}"
+    profile_data = response.json()
+
+    assert profile_data["first_name"] == "sally", "First name does not match."
+    assert profile_data["last_name"] == "thompson", "Last name does not match."
+    assert profile_data["gender"] == "woman", "Gender does not match."
+    assert profile_data[
+               "date_of_birth"] == "1991-02-02", "Date of birth does not match."
+    assert "avatar" in profile_data, "Avatar URL is missing!"
+
+    assert avatar_key in s3_storage_fake.storage, "Avatar file was not uploaded to Fake S3 Storage!"
+    expected_url = f"http://fake-s3.local/{avatar_key}"
+    actual_url = await s3_storage_fake.get_file_url(avatar_key)
+    assert actual_url == expected_url, "Avatar URL does not match expected URL."
+    assert profile, f"Profile for user {user.id} should exist!"
+    assert profile.first_name == "sally", "First name is incorrect!"
+    assert profile.last_name == "thompson", "Last name is incorrect!"
+    assert profile.gender == "woman", "Gender is incorrect!"
+    assert str(
+        profile.date_of_birth) == "1991-02-02", "Date of birth is incorrect!"
+    assert profile.info == "Just another text.", "Profile info is incorrect!"
+    assert profile.avatar == avatar_key, "Avatar key in database does not match!"
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_not_admin_not_owner_try_update_user_profile(
+        db_session,
+        seed_user_groups,
+        reset_db,
+        jwt_manager,
+        s3_storage_fake,
+        client,
+        create_user_and_profile,
+        create_activate_login_user
+):
+    """
+    Test that an admin can create a profile for another user.
+
+    Steps:
+    1. Create first_user and profile
+    2. Create second_user -  regular user
+    2. Generate an access token for second_user.
+    3. Send a request to update a profile for the first_user, using second user`s access_token.
+    4. Verify that response status is 403
+    5. Verify that the profile was not changed
+    """
+    user, _, profile = create_user_and_profile
+    profile_url = f"/api/v1/profiles/users/{user.id}/profile/"
+
+    another_user_data = await create_activate_login_user(group_name="user")
+    another_user_token = another_user_data["access_token"]
+    headers = {"Authorization": f"Bearer {another_user_token}"}
+
+    new_img = Image.new("RGB", (100, 100), color="red")
+    new_img_bytes = BytesIO()
+    new_img.save(new_img_bytes, format="JPEG")
+    new_img_bytes.seek(0)
+
+    update_files = {
+        "first_name": (None, "Sally"),
+        "last_name": (None, "Thompson"),
+        "gender": (None, "woman"),
+        "date_of_birth": (None, "1991-02-02"),
+        "info": (None, "Just another text."),
+        "avatar": ("new_avatar.jpg", new_img_bytes, "image/jpeg"),
+    }
+    profile_dict_before_updating = {
+        column.name: getattr(profile, column.name) for column in
+        profile.__table__.columns
+    }
+
+    response = await client.patch(profile_url, headers=headers, files=update_files)
+
+    await db_session.refresh(profile)
+    profile_dict_after_updating = {
+        column.name: getattr(profile, column.name) for column in
+        profile.__table__.columns
+    }
+
+    assert response.status_code == 403, f"Expected 403, got {response.status_code}"
+    assert profile_dict_before_updating == profile_dict_after_updating
