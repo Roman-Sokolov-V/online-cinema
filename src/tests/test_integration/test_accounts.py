@@ -214,7 +214,7 @@ async def test_activate_account_success_with_admin_access_token(
         db_session,
         seed_user_groups,
         register_user,
-        create_and_login_user
+        create_activate_login_user
 ):
     """
     Test successful activation of a user account.
@@ -227,7 +227,7 @@ async def test_activate_account_success_with_admin_access_token(
     - Verify the user is activated and the token is deleted.
     """
 
-    access_token, admin = await create_and_login_user(group_name="admin")
+    logged_user_data = await create_activate_login_user(group_name="admin")
     activation_payload, user = await register_user()
     activation_payload.pop("token")
     assert user.is_active is False, "User should be not active before activate"
@@ -236,7 +236,7 @@ async def test_activate_account_success_with_admin_access_token(
         "/api/v1/accounts/activate/",
         json=activation_payload,
         headers={
-            "Authorization": f"Bearer {access_token}"
+            "Authorization": f"Bearer {logged_user_data["access_token"]}"
         }
     )
 
@@ -266,7 +266,7 @@ async def test_activate_account_with_not_admin_access_token(
         db_session,
         seed_user_groups,
         register_user,
-        create_and_login_user
+        create_activate_login_user
 ):
     """
     Test unsuccessful activation of a user account.
@@ -282,7 +282,7 @@ async def test_activate_account_with_not_admin_access_token(
     - Verify the user is not activated and the token is not deleted.
     """
 
-    access_token, request_user = await create_and_login_user(group_name="user")
+    logged_user_data = await create_activate_login_user(group_name="user")
     activation_payload, user = await register_user()
 
     activation_payload.pop("token")
@@ -292,7 +292,7 @@ async def test_activate_account_with_not_admin_access_token(
         "/api/v1/accounts/activate/",
         json=activation_payload,
         headers={
-            "Authorization": f"Bearer {access_token}"
+            "Authorization": f"Bearer {logged_user_data["access_token"]}"
         }
     )
 
@@ -309,13 +309,13 @@ async def test_activate_account_with_not_admin_access_token(
     result = await db_session.execute(stmt)
     group_id_moderator = result.scalars().first()
     assert group_id_moderator is not None
-    request_user.group_id = group_id_moderator
+    logged_user_data["user"].group_id = group_id_moderator
     await db_session.commit()
     response = await client.post(
         "/api/v1/accounts/activate/",
         json=activation_payload,
         headers={
-            "Authorization": f"Bearer {access_token}"
+            "Authorization": f"Bearer {logged_user_data["access_token"]}"
         }
     )
     assert response.status_code == 403, "Expected status code 403, not admin users don`t have permission to activate account by access token"
@@ -334,7 +334,7 @@ async def test_activate_account_with_expired_admin_access_token(
         db_session,
         seed_user_groups,
         register_user,
-        create_and_login_user
+        create_activate_login_user
 ):
     """
     Test unsuccessful activation of a user account.
@@ -348,12 +348,12 @@ async def test_activate_account_with_expired_admin_access_token(
     - Verify the user is not activated and the token is not deleted.
     """
 
-    _, request_user = await create_and_login_user(group_name="admin")
+    logged_user_data = await create_activate_login_user(group_name="admin")
     expires_delta = timedelta(minutes=-3000)
     settings = get_settings()
     manager = get_jwt_auth_manager(settings=settings)
     access_token = manager.create_access_token(
-        {"user_id": request_user.id}, expires_delta=expires_delta
+        {"user_id": logged_user_data["user"].id}, expires_delta=expires_delta
     )
 
     activation_payload, user = await register_user()
@@ -1432,11 +1432,12 @@ async def is_refresh_token_deleted(db_session, user_id: int) -> bool:
 
 
 @pytest.mark.asyncio
-async def test_logout_success(client, db_session, activate_and_login_user):
+async def test_logout_success(client, db_session, create_activate_login_user):
     """
     Test logout endpoint with valid token.
     """
-    access_token = activate_and_login_user["access_token"]
+    logged_user_data = await create_activate_login_user()
+    access_token = logged_user_data["access_token"]
 
     # Logout
     response = await client.post(
@@ -1446,7 +1447,7 @@ async def test_logout_success(client, db_session, activate_and_login_user):
     assert response.status_code == 200, "Expected status code 200."
 
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
+    assert await is_refresh_token_deleted(db_session, logged_user_data[
         "user"].id) is True, "refresh_token should be deleted"
 
 
@@ -1468,11 +1469,12 @@ async def test_logout_no_header(client, db_session, activate_and_login_user):
 
 
 @pytest.mark.asyncio
-async def test_logout_no_header(client, db_session, activate_and_login_user):
+async def test_logout_no_header(client, db_session, create_activate_login_user):
     """
     Test logout endpoint with incorrect structure header
     """
-    access_token = activate_and_login_user["access_token"]
+    logged_user_data = await create_activate_login_user()
+    access_token = logged_user_data["access_token"]
     # Logout
     response = await client.post(
         "/api/v1/accounts/logout/",
@@ -1481,7 +1483,7 @@ async def test_logout_no_header(client, db_session, activate_and_login_user):
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is not deleted
-    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
+    assert await is_refresh_token_deleted(db_session, logged_user_data[
         "user"].id) is False, "refresh_token should not be deleted"
 
     response = await client.post(
@@ -1491,7 +1493,7 @@ async def test_logout_no_header(client, db_session, activate_and_login_user):
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is not deleted
-    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
+    assert await is_refresh_token_deleted(db_session, logged_user_data[
         "user"].id) is False, "refresh_token should not be deleted"
 
     response = await client.post(
@@ -1501,13 +1503,13 @@ async def test_logout_no_header(client, db_session, activate_and_login_user):
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
+    assert await is_refresh_token_deleted(db_session, logged_user_data[
         "user"].id) is False, "refresh_token should not be deleted"
 
 
 @pytest.mark.asyncio
 async def test_logout_invalid_token(
-        client, db_session, activate_and_login_user, jwt_manager
+        client, db_session, create_activate_login_user, jwt_manager
 ):
     """
     Test logout endpoint with incorrect token
@@ -1520,12 +1522,14 @@ async def test_logout_invalid_token(
     )
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
+    logged_user_data = await create_activate_login_user()
+
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
+    assert await is_refresh_token_deleted(db_session, logged_user_data[
         "user"].id) is False, "refresh_token should not be deleted"
 
     valid_expired_token = jwt_manager.create_access_token(
-        data={"user_id": activate_and_login_user["user"].id},
+        data={"user_id": logged_user_data["user"].id},
         expires_delta=timedelta(seconds=-1))
 
     response = await client.post(
@@ -1535,7 +1539,7 @@ async def test_logout_invalid_token(
     assert response.status_code == 401, "Expected status code 401_UNAUTHORIZED."
 
     # Check refresh_token is deleted
-    assert await is_refresh_token_deleted(db_session, activate_and_login_user[
+    assert await is_refresh_token_deleted(db_session, logged_user_data[
         "user"].id) is False, "refresh_token should not be deleted"
 
 # @pytest.mark.asyncio
