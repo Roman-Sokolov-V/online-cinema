@@ -16,5 +16,7 @@ from schemas.accounts import (
     UserLoginRequestSchema,
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
-    LogoutResponseSchema
+    LogoutResponseSchema,
+    PasswordChangeRequestSchema,
 )
+from schemas.tokens import AccessTokenPayload

@@ -90,3 +90,7 @@ class TokenRefreshResponseSchema(BaseModel):
 
 class LogoutResponseSchema(BaseModel):
     message: str
+
+
+class PasswordChangeRequestSchema(BaseEmailPasswordSchema):
+    old_password: str
