@@ -158,8 +158,31 @@ async def update_profile(
         s3_client: S3StorageInterface = Depends(get_s3_storage_client),
         profile_data: ProfileUpdateSchema = Depends(
             ProfileUpdateSchema.from_form),
-        _: None = Depends(is_owner_or_admin),
+        permission: None = Depends(is_owner_or_admin),
 ) -> ProfileResponseSchema:
+    """
+        Update a user profile.
+
+        Steps:
+        - Validate header with user or admin authentication token.
+        - Check if the user already has a profile.
+        - Upload new avatar to S3 storage, if it granted
+        - Store granted profile details in the database.
+
+        Args:
+            user_id (int): The ID of the user for whom the profile is being created.
+            db (AsyncSession): The asynchronous database session.
+            s3_client (S3StorageInterface): The asynchronous S3 storage client.
+            profile_data (ProfileCreateSchema): The profile data from the form.
+            permission: validate header, token and permission
+
+        Returns:
+            ProfileResponseSchema: The created user profile details.
+
+        Raises:
+            HTTPException: If authentication fails, if the user is not found or inactive,
+                           or if the profile already exists, or if S3 upload fails.
+        """
     result = await db.execute(
         select(UserProfileModel).where(UserProfileModel.user_id == user_id)
     )
@@ -169,16 +192,14 @@ async def update_profile(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User does not have a profile."
         )
-
-    print(profile)
-
     if profile_data.avatar:
         avatar_bytes = await profile_data.avatar.read()
         avatar_key = f"avatars/{user_id}_{profile_data.avatar.filename}"
 
         try:
-            await s3_client.upload_file(file_name=avatar_key,
-                                        file_data=avatar_bytes)
+            await s3_client.upload_file(
+                file_name=avatar_key, file_data=avatar_bytes
+            )
         except S3FileUploadError as e:
             print(f"Error uploading avatar to S3: {e}")
             raise HTTPException(
