@@ -79,6 +79,7 @@ MoviesDirectorsModel = Table(
     ),
 )
 
+
 class GenreModel(Base):
     __tablename__ = "genres"
 
@@ -104,6 +105,7 @@ class StarsModel(Base):
         secondary=MoviesStarsModel,
         back_populates="stars"
     )
+
     def __repr__(self):
         return f"Stars id = {self.id}, name = {self.name}"
 
@@ -131,8 +133,9 @@ class CountryModel(Base):
     code: Mapped[str] = mapped_column(String(3), unique=True, nullable=False)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    movies: Mapped[list["MovieModel"]] = relationship("MovieModel",
-                                                      back_populates="country")
+    movies: Mapped[list["MovieModel"]] = relationship(
+        "MovieModel", back_populates="country"
+    )
 
     def __repr__(self):
         return f"<Country(code='{self.code}', name='{self.name}')>"
@@ -154,7 +157,9 @@ class LanguageModel(Base):
         return f"<Language(name='{self.name}')>"
 
 
-class DirectorsModel(Base):
+class DirectorModel(Base):
+    __tablename__ = "directors"
+
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     movies: Mapped[list["MovieModel"]] = relationship(
@@ -162,6 +167,14 @@ class DirectorsModel(Base):
         secondary=MoviesDirectorsModel,
         back_populates="directors"
     )
+
+
+class CertificateModel(Base):
+    __tablename__ = "certificate"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    movies: Mapped[list["MovieModel"]] = relationship(back_populates="certificate")
 
 
 class MovieModel(Base):
@@ -178,10 +191,12 @@ class MovieModel(Base):
     budget: Mapped[float] = mapped_column(DECIMAL(15, 2), nullable=False)
     revenue: Mapped[float] = mapped_column(Float, nullable=False)
 
-    country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"),
-                                            nullable=False)
-    country: Mapped["CountryModel"] = relationship("CountryModel",
-                                                   back_populates="movies")
+    country_id: Mapped[int] = mapped_column(
+        ForeignKey("countries.id"), nullable=False
+    )
+    country: Mapped["CountryModel"] = relationship(
+        "CountryModel", back_populates="movies"
+    )
 
     genres: Mapped[list["GenreModel"]] = relationship(
         "GenreModel",
@@ -205,9 +220,16 @@ class MovieModel(Base):
         secondary=MoviesStarsModel,
         back_populates="movies"
     )
-    directors: Mapped[list[DirectorsModel]] = relationship(
+    directors: Mapped[list[DirectorModel]] = relationship(
         secondary=MoviesDirectorsModel,
         back_populates="movies"
+    )
+    certificate_id: Mapped[int] = mapped_column(
+        ForeignKey("certificate.id", ondelete="SET NULL"), nullable=True,
+    )
+    certificate: Mapped[CertificateModel] = relationship(
+        back_populates="movies",
+        passive_deletes=True
     )
 
     __table_args__ = (
