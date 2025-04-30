@@ -32,7 +32,7 @@ from schemas import (
     UserLoginRequestSchema,
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema, LogoutResponseSchema, AccessTokenPayload,
-    PasswordChangeRequestSchema, ChangeGroupeRequestSchema
+    PasswordChangeRequestSchema, ChangeGroupRequestSchema
 )
 from security.http import get_token_or_none
 from security.interfaces import JWTAuthManagerInterface
@@ -960,7 +960,7 @@ async def change_password(
 )
 async def change_user_group(
         user_id: int,
-        data: ChangeGroupeRequestSchema,
+        data: ChangeGroupRequestSchema,
         db: AsyncSession = Depends(get_db),
         _: None = Depends(is_admin_group),
 ) -> MessageResponseSchema:

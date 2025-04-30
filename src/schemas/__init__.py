@@ -18,5 +18,6 @@ from schemas.accounts import (
     TokenRefreshResponseSchema,
     LogoutResponseSchema,
     PasswordChangeRequestSchema,
+    ChangeGroupRequestSchema
 )
 from schemas.tokens import AccessTokenPayload

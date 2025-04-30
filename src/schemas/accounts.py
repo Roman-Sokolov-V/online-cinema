@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, field_validator
 
-from database import accounts_validators
+from database import accounts_validators, UserGroupEnum
 
 
 class BaseEmailPasswordSchema(BaseModel):
@@ -94,3 +94,7 @@ class LogoutResponseSchema(BaseModel):
 
 class PasswordChangeRequestSchema(BaseEmailPasswordSchema):
     current_password: str
+
+
+class ChangeGroupRequestSchema(BaseModel):
+    group_name: UserGroupEnum
