@@ -32,11 +32,11 @@ from schemas import (
     UserLoginRequestSchema,
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema, LogoutResponseSchema, AccessTokenPayload,
-    PasswordChangeRequestSchema
+    PasswordChangeRequestSchema, ChangeGroupeRequestSchema
 )
 from security.http import get_token_or_none
 from security.interfaces import JWTAuthManagerInterface
-from .permissions import is_any_group
+from .permissions import is_any_group, is_admin_group
 
 router = APIRouter()
 
@@ -920,3 +920,95 @@ async def change_password(
     )
 
     return MessageResponseSchema(message="Password reset successfully.")
+
+
+@router.patch(
+    "/users/{user_id}/group/",
+    response_model=MessageResponseSchema,
+    summary="Request to change user group.",
+    description="Change a user's group, providing admin access token.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        400: {
+            "description": (
+                    "Bad Request - The provided user id is not exists"
+            ),
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "invalid_email_or_token": {
+                            "summary": "Invalid Email or current password.",
+                            "value": {
+                                "detail": "Invalid Email or current password."
+                            }
+                        }
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error - An error occurred while resetting the password.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred while resetting the password."
+                    }
+                }
+            },
+        },
+    },
+)
+async def change_user_group(
+        user_id: int,
+        data: ChangeGroupeRequestSchema,
+        db: AsyncSession = Depends(get_db),
+        _: None = Depends(is_admin_group),
+) -> MessageResponseSchema:
+    """
+    Endpoint for changing a user group.
+
+    Validates the token is valid and owner of token is admin
+
+    Args:
+        user_id(int): User ID group of which will be changed
+        data (ChangeGroupeRequestSchema): The request data containing new grop_name.
+        db (AsyncSession): The asynchronous database session.
+        _(None): validate headers, inshore that request user is admin
+
+    Returns:
+        ChangeGroupResponseSchema:
+    #
+    # Raises:
+    #     HTTPException:
+    #         - 400 Bad Request if the email or current password is invalid.
+    #         - 500 Internal Server Error if an error occurs during the password reset process.
+    """
+
+    stmt = (select(UserModel).filter_by(id=user_id))
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Bad Request - user with id {user_id} is not exists"
+        )
+    stmt = select(UserGroupModel.id).where(UserGroupModel.name == data.group_name)
+    result = await db.execute(stmt)
+    new_group_id = result.scalars().first()
+    try:
+        user.group_id = new_group_id
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while resetting the password."
+        )
+
+    return MessageResponseSchema(
+        message=f"User`s group is changed successfully"
+    )
+
+
+
