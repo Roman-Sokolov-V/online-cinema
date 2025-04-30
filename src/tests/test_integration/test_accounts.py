@@ -1624,7 +1624,6 @@ async def test_reset_password_with_not_existing_email(
     user = user_data["user"]
     old_password = user_data["payload"]["password"]
     new_password = "NewStrongPassword123!"
-    print(user_data["payload"])
     request_data = {
         "email": "not_existing@example.com",
         "current_password": user_data["payload"]["password"],
@@ -1638,3 +1637,35 @@ async def test_reset_password_with_not_existing_email(
     assert response.status_code == 400, "Expected status code 400 if provided not existing email."
     await db_session.refresh(user)
     assert user.verify_password(old_password) is True, "Password in DB must remain unchanged after invalid attempt"
+
+
+@pytest.mark.asyncio
+async def test_success_change_user_group(
+        client, db_session, create_activate_login_user
+):
+    user_data = await create_activate_login_user(group_name="user")
+    user = user_data["user"]
+    print(user)
+    print("user.group_id ", user.group_id)
+
+    admin_data = await create_activate_login_user(group_name="admin")
+    headers = {
+        "Authorization": f"Bearer {admin_data["access_token"]}"
+    }
+    new_group_name = "moderator"
+    request_data = {
+        "group_name": new_group_name
+    }
+    stmt = select(UserGroupModel.id).where(UserGroupModel.name == request_data["group_name"])
+    result = await db_session.execute(stmt)
+    new_group_id = result.scalars().first()
+    print(f"{new_group_id=}")
+    response = await client.patch(
+        f"/api/v1/accounts/users/{user.id}/group/",
+        json=request_data,
+        headers=headers
+    )
+    assert response.status_code == 200, "Expected status code 200 group successfuly changed"
+    await db_session.refresh(user)
+    assert user.group_id == new_group_id, "New group id should be set"
+
