@@ -205,6 +205,10 @@ class MovieModel(Base):
         secondary=MoviesStarsModel,
         back_populates="movies"
     )
+    directors: Mapped[list[DirectorsModel]] = relationship(
+        secondary=MoviesDirectorsModel,
+        back_populates="movies"
+    )
 
     __table_args__ = (
         UniqueConstraint("name", "date", name="unique_movie_constraint"),
