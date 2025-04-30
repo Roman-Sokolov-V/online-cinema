@@ -154,6 +154,16 @@ class LanguageModel(Base):
         return f"<Language(name='{self.name}')>"
 
 
+class DirectorsModel(Base):
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    movies: Mapped[list["MovieModel"]] = relationship(
+        "MovieModel",
+        secondary=MoviesDirectorsModel,
+        back_populates="directors"
+    )
+
+
 class MovieModel(Base):
     __tablename__ = "movies"
 
