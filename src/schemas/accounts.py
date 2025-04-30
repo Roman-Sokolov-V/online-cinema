@@ -1,6 +1,8 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr, field_validator
 
-from database import accounts_validators
+from database import accounts_validators, UserGroupEnum
 
 
 class BaseEmailPasswordSchema(BaseModel):
@@ -55,7 +57,22 @@ class UserRegistrationResponseSchema(BaseModel):
 
 class UserActivationRequestSchema(BaseModel):
     email: EmailStr
-    token: str
+    token: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {
+                    "self_activation": {
+                        "email": "user@example.com",
+                        "token": "abc123xyz"
+                    },
+                    "admin_activation": {
+                        "email": "user@example.com"
+                    }
+                }
+            ]
+        }
 
 
 class MessageResponseSchema(BaseModel):
@@ -69,3 +86,15 @@ class TokenRefreshRequestSchema(BaseModel):
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class LogoutResponseSchema(BaseModel):
+    message: str
+
+
+class PasswordChangeRequestSchema(BaseEmailPasswordSchema):
+    current_password: str
+
+
+class ChangeGroupRequestSchema(BaseModel):
+    group_name: UserGroupEnum

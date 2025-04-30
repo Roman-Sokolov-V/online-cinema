@@ -7,9 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_s3_storage_client, get_jwt_auth_manager
 from database import get_db
-from database.models.accounts import UserModel, UserProfileModel, GenderEnum, UserGroupModel, UserGroupEnum
+from database.models.accounts import UserModel, UserProfileModel, GenderEnum, \
+    UserGroupModel, UserGroupEnum
 from exceptions import BaseSecurityError, S3FileUploadError
-from schemas.profiles import ProfileCreateSchema, ProfileResponseSchema
+from routes.permissions import is_owner_or_admin
+from schemas.profiles import (
+    ProfileCreateSchema,
+    ProfileResponseSchema,
+    ProfileUpdateSchema
+)
 from security.interfaces import JWTAuthManagerInterface
 from security.http import get_token
 from storages import S3StorageInterface
@@ -30,7 +36,8 @@ async def create_profile(
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
         db: AsyncSession = Depends(get_db),
         s3_client: S3StorageInterface = Depends(get_s3_storage_client),
-        profile_data: ProfileCreateSchema = Depends(ProfileCreateSchema.from_form)
+        profile_data: ProfileCreateSchema = Depends(
+            ProfileCreateSchema.from_form)
 ) -> ProfileResponseSchema:
     """
     Creates a user profile.
@@ -88,7 +95,8 @@ async def create_profile(
             detail="User not found or not active."
         )
 
-    stmt_profile = select(UserProfileModel).where(UserProfileModel.user_id == user.id)
+    stmt_profile = select(UserProfileModel).where(
+        UserProfileModel.user_id == user.id)
     result_profile = await db.execute(stmt_profile)
     existing_profile = result_profile.scalars().first()
     if existing_profile:
@@ -101,7 +109,8 @@ async def create_profile(
     avatar_key = f"avatars/{user.id}_{profile_data.avatar.filename}"
 
     try:
-        await s3_client.upload_file(file_name=avatar_key, file_data=avatar_bytes)
+        await s3_client.upload_file(file_name=avatar_key,
+                                    file_data=avatar_bytes)
     except S3FileUploadError as e:
         print(f"Error uploading avatar to S3: {e}")
         raise HTTPException(
@@ -134,4 +143,87 @@ async def create_profile(
         date_of_birth=new_profile.date_of_birth,
         info=new_profile.info,
         avatar=cast(HttpUrl, avatar_url)
+    )
+
+
+@router.patch(
+    "/users/{user_id}/profile/",
+    response_model=ProfileResponseSchema,
+    summary="Update existing profile",
+    status_code=status.HTTP_200_OK
+)
+async def update_profile(
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        s3_client: S3StorageInterface = Depends(get_s3_storage_client),
+        profile_data: ProfileUpdateSchema = Depends(
+            ProfileUpdateSchema.from_form),
+        permission: None = Depends(is_owner_or_admin),
+) -> ProfileResponseSchema:
+    """
+        Update a user profile.
+
+        Steps:
+        - Validate header with user or admin authentication token.
+        - Check if the user already has a profile.
+        - Upload new avatar to S3 storage, if it granted
+        - Store granted profile details in the database.
+
+        Args:
+            user_id (int): The ID of the user for whom the profile is being created.
+            db (AsyncSession): The asynchronous database session.
+            s3_client (S3StorageInterface): The asynchronous S3 storage client.
+            profile_data (ProfileCreateSchema): The profile data from the form.
+            permission: validate header, token and permission
+
+        Returns:
+            ProfileResponseSchema: The created user profile details.
+
+        Raises:
+            HTTPException: If authentication fails, if the user is not found or inactive,
+                           or if the profile already exists, or if S3 upload fails.
+        """
+    result = await db.execute(
+        select(UserProfileModel).where(UserProfileModel.user_id == user_id)
+    )
+    profile = result.scalars().first()
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User does not have a profile."
+        )
+    if profile_data.avatar:
+        avatar_bytes = await profile_data.avatar.read()
+        avatar_key = f"avatars/{user_id}_{profile_data.avatar.filename}"
+
+        try:
+            await s3_client.upload_file(
+                file_name=avatar_key, file_data=avatar_bytes
+            )
+        except S3FileUploadError as e:
+            print(f"Error uploading avatar to S3: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to upload avatar. Please try again later."
+            )
+        profile.avatar = avatar_key
+    avatar_url = await s3_client.get_file_url(profile.avatar)
+
+    for field_name, value in profile_data.model_dump().items():
+        if field_name != "avatar":
+            if value is not None:
+                setattr(profile, field_name, value)
+
+    await db.commit()
+    await db.refresh(profile)
+
+    return ProfileResponseSchema(
+        id=profile.id,
+        user_id=profile.user_id,
+        first_name=profile.first_name,
+        last_name=profile.last_name,
+        gender=profile.gender,
+        date_of_birth=profile.date_of_birth,
+        info=profile.info,
+        avatar=avatar_url
     )

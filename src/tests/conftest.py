@@ -1,14 +1,19 @@
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
-from config import get_settings, get_accounts_email_notificator, get_s3_storage_client
+from io import BytesIO
+from PIL import Image
+
+from config import get_settings, get_accounts_email_notificator, \
+    get_s3_storage_client
 from database import (
     reset_database,
     get_db_contextmanager,
     UserGroupEnum,
-    UserGroupModel
+    UserGroupModel, RefreshTokenModel, UserProfileModel
 )
 from database.populate import CSVDatabaseSeeder
 from main import app
@@ -17,6 +22,8 @@ from security.token_manager import JWTAuthManager
 from storages import S3StorageClient
 from tests.doubles.fakes.storage import FakeS3Storage
 from tests.doubles.stubs.emails import StubEmailSender
+
+from database import UserModel
 
 
 def pytest_configure(config):
@@ -110,10 +117,12 @@ async def client(email_sender_stub, s3_storage_fake):
 
     Overrides the dependencies for email sender and S3 storage with test doubles.
     """
-    app.dependency_overrides[get_accounts_email_notificator] = lambda: email_sender_stub
+    app.dependency_overrides[
+        get_accounts_email_notificator] = lambda: email_sender_stub
     app.dependency_overrides[get_s3_storage_client] = lambda: s3_storage_fake
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as async_client:
+    async with AsyncClient(transport=ASGITransport(app=app),
+                           base_url="http://test") as async_client:
         yield async_client
 
     app.dependency_overrides.clear()
@@ -126,7 +135,8 @@ async def e2e_client():
 
     This client is available at the session scope.
     """
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as async_client:
+    async with AsyncClient(transport=ASGITransport(app=app),
+                           base_url="http://test") as async_client:
         yield async_client
 
 
@@ -203,9 +213,165 @@ async def seed_database(db_session):
     :type db_session: AsyncSession
     """
     settings = get_settings()
-    seeder = CSVDatabaseSeeder(csv_file_path=settings.PATH_TO_MOVIES_CSV, db_session=db_session)
+    seeder = CSVDatabaseSeeder(csv_file_path=settings.PATH_TO_MOVIES_CSV,
+                               db_session=db_session)
 
     if not await seeder.is_db_populated():
         await seeder.seed()
 
     yield db_session
+
+
+@pytest_asyncio.fixture
+async def register_user(client, db_session, seed_user_groups):
+    """
+    Фабрика для реєстрації користувача.
+
+    Повертає функцію, яка приймає registration_payload і створює користувача.
+    """
+
+    async def _create_user(
+            registration_payload: dict = {
+                "email": "testuser@example.com",
+                "password": "StrongPassword123!"
+            }
+    ):
+        registration_response = await client.post("/api/v1/accounts/register/",
+                                                  json=registration_payload)
+        assert registration_response.status_code == 201
+        stmt = (
+            select(UserModel)
+            .options(joinedload(UserModel.activation_token))
+            .where(UserModel.email == registration_payload["email"])
+        )
+        result = await db_session.execute(stmt)
+        user = result.scalars().first()
+
+        activation_payload = {
+            "email": registration_payload["email"],
+            "token": user.activation_token.token
+        }
+        return activation_payload, user
+
+    return _create_user
+
+
+@pytest_asyncio.fixture
+async def create_activate_login_user(
+        client, db_session, seed_user_groups, register_user
+):
+    """
+    Register a user, activates his account,
+    adds to a group of a certain group ("user" by default)
+    and returns access_token, refresh_token, user, payload.
+
+    :returns: dict {
+        user: UserModel,
+        access_token: str,
+        refresh_token: str,
+        payload: Dict {email: str, password: str}
+    }
+    """
+
+
+    async def _login_user(group_name: str = "user", prefix: str = ""):
+        registration_payload = {
+            "email": f"{prefix}{group_name}@example.com",
+            "password": "StrongPassword123!"
+        }
+
+        activation_payload, user = await register_user(registration_payload)
+
+        # Активуємо користувача вручну
+        user.is_active = True
+
+        # Знаходимо групу
+        stmt = select(UserGroupModel.id).where(
+            UserGroupModel.name == group_name)
+        result = await db_session.execute(stmt)
+        id_group = result.scalars().first()
+
+        assert id_group is not None, "Admin group must exist in the database."
+
+        # Призначаємо користувачу групу "admin"
+        user.group_id = id_group
+
+        await db_session.commit()
+        await db_session.refresh(user)
+        # Логінимось
+        login_response = await client.post(
+            "/api/v1/accounts/login/", json=registration_payload
+        )
+        assert login_response.status_code == 201, "Expected status code 201 for successful login."
+
+        # Отримуємо токени
+        data = login_response.json()
+        access_token = data["access_token"]
+        refresh_token = data["refresh_token"]
+
+        return {
+            "user": user,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "payload": registration_payload,
+        }
+    return _login_user
+
+
+@pytest_asyncio.fixture
+def jwt_manager() -> JWTAuthManagerInterface:
+    settings = get_settings()
+    return JWTAuthManager(
+        secret_key_access=settings.SECRET_KEY_ACCESS,
+        secret_key_refresh=settings.SECRET_KEY_REFRESH,
+        algorithm=settings.JWT_SIGNING_ALGORITHM
+    )
+
+
+@pytest_asyncio.fixture
+async def create_user_and_profile(
+        db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
+):
+    """
+    Positive test for updating a user profile.
+
+    Steps:
+    1. Create a test user and activate them.
+    2. Generate an access token using `jwt_manager`.
+    3. Create user profile using create_profile endpoint
+    return: tuple(user: UserModel, headers: dict)
+    """
+    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user.is_active = True
+    db_session.add(user)
+    await db_session.commit()
+    stmt = select(UserModel).where(UserModel.email == "test@mate.com")
+    result = await db_session.execute(stmt)
+    user = result.scalars().first()
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
+    img = Image.new("RGB", (100, 100), color="blue")
+    img_bytes = BytesIO()
+    img.save(img_bytes, format="JPEG")
+    img_bytes.seek(0)
+
+    avatar_key = f"avatars/{user.id}_avatar.jpg"
+    profile_url = f"/api/v1/profiles/users/{user.id}/profile/"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    files = {
+        "first_name": (None, "John"),
+        "last_name": (None, "Doe"),
+        "gender": (None, "man"),
+        "date_of_birth": (None, "1990-01-01"),
+        "info": (None, "This is a test profile."),
+        "avatar": ("avatar.jpg", img_bytes, "image/jpeg"),
+    }
+
+    response = await client.post(profile_url, headers=headers, files=files)
+
+    expected_url = f"http://fake-s3.local/{avatar_key}"
+    actual_url = await s3_storage_fake.get_file_url(avatar_key)
+    stmt = select(UserProfileModel).where(UserProfileModel.user == user)
+    result = await db_session.execute(stmt)
+    profile = result.scalars().first()
+
+    return user, headers, profile

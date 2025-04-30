@@ -1,13 +1,35 @@
 from fastapi import Request, HTTPException, status
 
 
+def check_token(authorization) -> str:
+    """
+    Validate and extract the Bearer token from the Authorization header value.
+    Args:
+        authorization (str): The value of the Authorization header.
+    Returns:
+        str: The extracted token.
+    Raises:
+        HTTPException: If the header format is invalid (not Bearer or token missing).
+    """
+    scheme, _, token = authorization.partition(" ")
+
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Authorization header format. Expected 'Bearer <token>'"
+        )
+    return token
+
+
 def get_token(request: Request) -> str:
     """
     Extracts the Bearer token from the Authorization header.
 
     :param request: FastAPI Request object.
     :return: Extracted token string.
-    :raises HTTPException: If Authorization header is missing or invalid.
+    :raises HTTPException:
+            - 401 Unauthorized if the Authorization header is missing.
+            - 401 Unauthorized if the header format is invalid.
     """
     authorization: str = request.headers.get("Authorization")
 
@@ -17,12 +39,19 @@ def get_token(request: Request) -> str:
             detail="Authorization header is missing"
         )
 
-    scheme, _, token = authorization.partition(" ")
+    return check_token(authorization)
 
-    if scheme.lower() != "bearer" or not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Authorization header format. Expected 'Bearer <token>'"
-        )
 
-    return token
+def get_token_or_none(request: Request) -> str | None:
+    """
+    Extracts the Bearer token from the Authorization header.
+
+    :param request: FastAPI Request object.
+    :return: str | None: The extracted Bearer token, or None if the Authorization header is missing.
+    :raises: - 401 Unauthorized if the Authorization header exists but has an invalid format.
+    """
+    authorization: str = request.headers.get("Authorization")
+
+    if not authorization:
+        return None
+    return check_token(authorization)

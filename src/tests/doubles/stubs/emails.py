@@ -3,13 +3,16 @@ from notifications import EmailSenderInterface
 
 class StubEmailSender(EmailSenderInterface):
 
-    async def send_activation_email(self, email: str, activation_link: str) -> None:
+    async def send_activation_email(
+            self, email: str, activation_link: str, activation_token: str
+    ) -> None:
         """
         Stub implementation for sending an activation email.
 
         Args:
             email (str): The recipient's email address.
             activation_link (str): The activation link to include in the email.
+            activation_token: (str): The activation token to include in the email.
         """
         return None
 
