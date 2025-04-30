@@ -1643,14 +1643,20 @@ async def test_reset_password_with_not_existing_email(
 async def test_success_change_user_group(
         client, db_session, create_activate_login_user
 ):
+    """
+    Test that admin can change user`s user_group
+    steps:
+    1. Create, activate, login user.
+    2. Create,  activate, login admin.
+    3. Request change_user_group endpoint with admin access token
+    4. Check that we get the correct status code
+    5. Check that user`s group_id was changed in db with correct value
+    """
     user_data = await create_activate_login_user(group_name="user")
     user = user_data["user"]
-    print(user)
-    print("user.group_id ", user.group_id)
-
     admin_data = await create_activate_login_user(group_name="admin")
     headers = {
-        "Authorization": f"Bearer {admin_data["access_token"]}"
+        "Authorization": f"Bearer {admin_data['access_token']}"
     }
     new_group_name = "moderator"
     request_data = {
@@ -1659,7 +1665,6 @@ async def test_success_change_user_group(
     stmt = select(UserGroupModel.id).where(UserGroupModel.name == request_data["group_name"])
     result = await db_session.execute(stmt)
     new_group_id = result.scalars().first()
-    print(f"{new_group_id=}")
     response = await client.patch(
         f"/api/v1/accounts/users/{user.id}/group/",
         json=request_data,
@@ -1669,3 +1674,67 @@ async def test_success_change_user_group(
     await db_session.refresh(user)
     assert user.group_id == new_group_id, "New group id should be set"
 
+
+@pytest.mark.asyncio
+async def test_try_change_user_group_by_not_admin(
+        client, db_session, create_activate_login_user
+):
+    """
+    Test that not admin users can`t change user`s user_group
+    steps:
+    1. Create, activate, login target_user.
+    2. Create,  activate, login user-"moderator".
+    3. Create,  activate, login another_user-"user".
+    4. Request change_user_group endpoint with moderator access token
+    5. Check that we get the correct status code
+    6. Check that user`s group_id was not changed in db
+    7. Repeat points 4, 5, 6 with another_user and own target_user access tokens
+    """
+    target_user_data = await create_activate_login_user(group_name="user", prefix="target")
+    target_user = target_user_data["user"]
+    current_target_user_group_id = target_user.group_id
+
+
+    moderator_data = await create_activate_login_user(group_name="moderator")
+    moderator_headers = {
+        "Authorization": f"Bearer {moderator_data['access_token']}"
+    }
+    request_data = {
+        "group_name": "moderator"
+    }
+
+    response = await client.patch(
+        f"/api/v1/accounts/users/{target_user.id}/group/",
+        json=request_data,
+        headers=moderator_headers
+    )
+    assert response.status_code == 403, "Expected status code 403, only admin can change user group"
+    await db_session.refresh(target_user)
+    assert target_user.group_id == current_target_user_group_id, "User group ID should not be changed"
+
+    another_user_data = await create_activate_login_user(group_name="user")
+    another_user_headers = {
+        "Authorization": f"Bearer {another_user_data['access_token']}"
+    }
+
+    response = await client.patch(
+        f"/api/v1/accounts/users/{target_user.id}/group/",
+        json=request_data,
+        headers=another_user_headers
+    )
+    assert response.status_code == 403, "Expected status code 403, only admin can change user group"
+    await db_session.refresh(target_user)
+    assert target_user.group_id == current_target_user_group_id, "User group ID should not be changed"
+
+    target_user_headers = {
+        "Authorization": f"Bearer {target_user_data['access_token']}"
+    }
+
+    response = await client.patch(
+        f"/api/v1/accounts/users/{target_user.id}/group/",
+        json=request_data,
+        headers=target_user_headers
+    )
+    assert response.status_code == 403, "Expected status code 403, only admin can change user group"
+    await db_session.refresh(target_user)
+    assert target_user.group_id == current_target_user_group_id, "User group ID should not be changed"
