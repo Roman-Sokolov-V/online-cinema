@@ -66,6 +66,18 @@ MoviesStarsModel = Table(
     ),
 )
 
+MoviesDirectorsModel = Table(
+    "movie_directors",
+    Base.metadata,
+    Column(
+        "movie_id", ForeignKey("movies.id"),
+        primary_key=True, nullable=False
+    ),
+    Column(
+        "director_id", ForeignKey("directors.id"),
+        primary_key=True, nullable=False
+    ),
+)
 
 class GenreModel(Base):
     __tablename__ = "genres"
