@@ -169,12 +169,12 @@ class DirectorModel(Base):
     )
 
 
-class CertificateModel(Base):
-    __tablename__ = "certificate"
+class CertificationModel(Base):
+    __tablename__ = "certification"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    movies: Mapped[list["MovieModel"]] = relationship(back_populates="certificate")
+    movies: Mapped[list["MovieModel"]] = relationship(back_populates="certification")
 
 
 class MovieModel(Base):
@@ -224,10 +224,10 @@ class MovieModel(Base):
         secondary=MoviesDirectorsModel,
         back_populates="movies"
     )
-    certificate_id: Mapped[int] = mapped_column(
-        ForeignKey("certificate.id", ondelete="SET NULL"), nullable=True,
+    certification_id: Mapped[int] = mapped_column(
+        ForeignKey("certification.id", ondelete="SET NULL"), nullable=True,
     )
-    certificate: Mapped[CertificateModel] = relationship(
+    certification: Mapped[CertificationModel] = relationship(
         back_populates="movies",
         passive_deletes=True
     )
