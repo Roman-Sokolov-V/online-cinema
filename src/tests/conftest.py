@@ -274,9 +274,9 @@ async def create_activate_login_user(
     """
 
 
-    async def _login_user(group_name: str = "user"):
+    async def _login_user(group_name: str = "user", prefix: str = ""):
         registration_payload = {
-            "email": f"{group_name}@example.com",
+            "email": f"{prefix}{group_name}@example.com",
             "password": "StrongPassword123!"
         }
 
