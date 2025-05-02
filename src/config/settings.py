@@ -10,7 +10,7 @@ class BaseAppSettings(BaseSettings):
     HOSTING: str = "http://127.0.0.1:8000"
     BASE_DIR: Path = Path(__file__).parent.parent
     PATH_TO_DB: str = str(BASE_DIR / "database" / "source" / "theater.db")
-    PATH_TO_MOVIES_CSV: str = str(BASE_DIR / "database" / "seed_data" / "imdb_movies.csv")
+    PATH_TO_MOVIES_CSV: str = str(BASE_DIR / "database" / "seed_data" / "imdb_top_1000.csv")
 
     PATH_TO_EMAIL_TEMPLATES_DIR: str = str(BASE_DIR / "notifications" / "templates")
     ACTIVATION_EMAIL_TEMPLATE_NAME: str = "activation_request.html"
