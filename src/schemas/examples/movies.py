@@ -51,7 +51,7 @@ genre_schema_example = {
 
 actor_schema_example = {
     "id": 1,
-    "name": "JimmyFallon"
+    "name": "Jimmy Fallon"
 }
 
 movie_detail_schema_example = {
