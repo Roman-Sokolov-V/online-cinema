@@ -36,6 +36,10 @@ class BaseAppSettings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://127.0.0.1:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://127.0.0.1:6379/0"
 
+    SUPER_USER_EMAIL: str = "admin@example.com"
+    SUPER_USER_PASSWORD: str = "Admin@11"
+
+
     @property
     def S3_STORAGE_ENDPOINT(self) -> str:
         return f"http://{self.S3_STORAGE_HOST}:{self.S3_STORAGE_PORT}"
