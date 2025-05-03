@@ -15,7 +15,7 @@ from database import (
     GenreModel,
     MoviesGenresModel,
     MovieModel, UserGroupModel, UserGroupEnum, CertificationModel, StarsModel,
-    MoviesStarsModel, MoviesDirectorsModel, DirectorModel
+    MoviesStarsModel, MoviesDirectorsModel, DirectorModel, UserModel
 )
 from database import get_db_contextmanager
 
@@ -380,6 +380,17 @@ async def main() -> None:
             try:
                 await seeder.seed()
                 print("Database seeding completed successfully.")
+                stmt = select(UserGroupModel.id).where(UserGroupModel.name == "admin")
+                result = await db_session.execute(stmt)
+                admin_group_id = result.scalars().first()
+                super_user = UserModel.create(
+                    email=settings.SUPER_USER_EMAIL,
+                    raw_password=settings.SUPER_USER_PASSWORD,
+                    group_id=admin_group_id
+                )
+                super_user.is_active = True
+                db_session.add(super_user)
+                await db_session.commit()
             except Exception as e:
                 print(f"Failed to seed the database: {e}")
         else:
