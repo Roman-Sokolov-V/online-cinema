@@ -2,7 +2,7 @@ import random
 
 import pytest
 from sqlalchemy import select, func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from database import MovieModel
 from database import (
@@ -247,7 +247,6 @@ async def test_movie_list_with_filter_by_genres(client, db_session,
 
     Verifies the following:
     - The response status code is 200.
-    - Total items and total pages match the expected values from the database.
     - All items should satisfy the filtering parameters
     """
 
@@ -277,14 +276,14 @@ async def test_movie_list_with_filter_by_genres(client, db_session,
 
 
 @pytest.mark.asyncio
-async def test_movie_list_with_filter_by_stars(client, db_session,
-                                               seed_database):
+async def test_movie_list_with_filter_by_stars(
+        client, db_session, seed_database
+):
     """
     Test the `/movies/` endpoint with filter by stars.
 
     Verifies the following:
     - The response status code is 200.
-    - Total items and total pages match the expected values from the database.
     - All items should satisfy the filtering parameters
     """
     star_1 = "Ben Stiller"
@@ -313,8 +312,74 @@ async def test_movie_list_with_filter_by_stars(client, db_session,
     response_data = response.json()
     for movie in response_data["movies"]:
         stars = {star["name"] for star in movie["stars"]}
-        assert stars.issuperset({star_1,
-                                 star_2}), f"in every movie should be stars - {star_1} and {star_2}"
+        assert (
+            stars.issuperset({star_1, star_2}),
+            f"in every movie should be stars - {star_1} and {star_2}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_movie_list_with_filter_by_directors(
+        client, db_session, seed_database
+):
+    """
+    Test the `/movies/` endpoint with filter by directors.
+
+    Verifies the following:
+    - The response status code is 200.
+    - All items should satisfy the filtering parameters
+    """
+    director_1 = "George Lucas"
+    director_2 = "Peter Weir"
+    response = await client.get(
+        f"/api/v1/theater/movies/?directors={director_1}")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
+
+    for movie in response_data["movies"]:
+        directors = {director["name"] for director in movie["directors"]}
+        assert director_1 in directors, f"in every movie should by star - {director_1}"
+
+    response = await client.get(
+        f"/api/v1/theater/movies/?directors={director_1}|{director_2}")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
+    for movie in response_data["movies"]:
+        directors = {director["name"] for director in movie["directors"]}
+        assert (
+                (director_1 in directors) or (director_2 in directors)
+        ), "in every movie should be directors - {director_1} or {director_2}"
+
+    response = await client.get(
+        f"/api/v1/theater/movies/?directors={director_1},{director_2}")
+    assert response.status_code == 404, f"Expected status code 404, if no movies were exists both directors, but got {response.status_code}"
+
+    stmt = select(DirectorModel).where(DirectorModel.name == director_2)
+    result = await db_session.execute(stmt)
+    second_director = result.scalar_one()
+
+    stmt = (
+        select(MovieModel)
+        .join(MovieModel.directors)
+        .where(DirectorModel.name == director_1)
+        .options(selectinload(MovieModel.directors))
+    )
+    result = await db_session.execute(stmt)
+    movie = result.scalars().first()
+    movie.directors.append(second_director)
+    await db_session.commit()
+
+    response = await client.get(
+        f"/api/v1/theater/movies/?directors={director_1},{director_2}")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
+    assert len(response_data["movies"]) == 1
+    response_movie = response_data["movies"][0]
+    directors = {director["name"] for director in response_movie["directors"]}
+    assert (
+        directors.issuperset({director_1, director_2}),
+        f"in every movie should be directors - {director_1} and {director_2}"
+    )
 
 
 @pytest.mark.asyncio
