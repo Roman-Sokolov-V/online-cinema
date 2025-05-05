@@ -36,7 +36,7 @@ router = APIRouter()
     "<li>Filter movies by <code>genres</code>, <code>stars</code>, <code>directors</code>, <code>year</code>, and <code>min_rating</code>.</li>"
     "<li>Sort results using <code>sort_params</code> (e.g., <code>older,rating</code>). Only non-conflicting combinations are allowed.</li>"
     "</ul>"
-    "<p>Example: <code>/movies/?genres=action+horror&sort_params=older,rating&page=2</code></p>"
+    "<p>Example: <code>/movies/?genres=action,horror&sort_params=older,rating&page=2</code></p>"
     ),
     responses={
         404: {
@@ -71,7 +71,7 @@ async def get_movie_list(
                 "?stars=Danny de Vito,Nicolas Cage",
                 "?stars=Danny de Vito"
             ],
-            example="Gaylen Ross+David Emge"
+            example="Gaylen Ross,David Emge"
         ),
         directors: str = Query(
             default=None,

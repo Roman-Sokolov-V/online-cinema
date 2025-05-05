@@ -35,12 +35,16 @@ async def test_get_movies_default_parameters(client, seed_database):
 
     response_data = response.json()
 
-    assert len(response_data["movies"]) == 10, "Expected 10 movies in the response, but got a different count"
+    assert len(response_data[
+                   "movies"]) == 10, "Expected 10 movies in the response, but got a different count"
 
-    assert response_data["total_pages"] > 0, "Expected total_pages > 0, but got a non-positive value"
-    assert response_data["total_items"] > 0, "Expected total_items > 0, but got a non-positive value"
+    assert response_data[
+               "total_pages"] > 0, "Expected total_pages > 0, but got a non-positive value"
+    assert response_data[
+               "total_items"] > 0, "Expected total_items > 0, but got a non-positive value"
 
-    assert response_data["prev_page"] is None, "Expected prev_page to be None on the first page, but got a value"
+    assert response_data[
+               "prev_page"] is None, "Expected prev_page to be None on the first page, but got a value"
 
     if response_data["total_pages"] > 1:
         assert response_data["next_page"] is not None, (
@@ -56,7 +60,8 @@ async def test_get_movies_with_custom_parameters(client, seed_database):
     page = 2
     per_page = 5
 
-    response = await client.get(f"/api/v1/theater/movies/?page={page}&per_page={per_page}")
+    response = await client.get(
+        f"/api/v1/theater/movies/?page={page}&per_page={per_page}")
 
     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
 
@@ -66,22 +71,27 @@ async def test_get_movies_with_custom_parameters(client, seed_database):
         f"Expected {per_page} movies in the response, but got {len(response_data['movies'])}"
     )
 
-    assert response_data["total_pages"] > 0, "Expected total_pages > 0, but got a non-positive value"
-    assert response_data["total_items"] > 0, "Expected total_items > 0, but got a non-positive value"
+    assert response_data[
+               "total_pages"] > 0, "Expected total_pages > 0, but got a non-positive value"
+    assert response_data[
+               "total_items"] > 0, "Expected total_items > 0, but got a non-positive value"
 
     if page > 1:
-        assert response_data["prev_page"] == f"/theater/movies/?page={page - 1}&per_page={per_page}", (
+        assert response_data[
+                   "prev_page"] == f"/theater/movies/?page={page - 1}&per_page={per_page}", (
             f"Expected prev_page to be '/theater/movies/?page={page - 1}&per_page={per_page}', "
             f"but got {response_data['prev_page']}"
         )
 
     if page < response_data["total_pages"]:
-        assert response_data["next_page"] == f"/theater/movies/?page={page + 1}&per_page={per_page}", (
+        assert response_data[
+                   "next_page"] == f"/theater/movies/?page={page + 1}&per_page={per_page}", (
             f"Expected next_page to be '/theater/movies/?page={page + 1}&per_page={per_page}', "
             f"but got {response_data['next_page']}"
         )
     else:
-        assert response_data["next_page"] is None, "Expected next_page to be None on the last page, but got a value"
+        assert response_data[
+                   "next_page"] is None, "Expected next_page to be None on the last page, but got a value"
 
 
 @pytest.mark.asyncio
@@ -90,11 +100,13 @@ async def test_get_movies_with_custom_parameters(client, seed_database):
     (1, 0, "Input should be greater than or equal to 1"),
     (0, 0, "Input should be greater than or equal to 1"),
 ])
-async def test_invalid_page_and_per_page(client, page, per_page, expected_detail):
+async def test_invalid_page_and_per_page(client, page, per_page,
+                                         expected_detail):
     """
     Test the `/movies/` endpoint with invalid `page` and `per_page` parameters.
     """
-    response = await client.get(f"/api/v1/theater/movies/?page={page}&per_page={per_page}")
+    response = await client.get(
+        f"/api/v1/theater/movies/?page={page}&per_page={per_page}")
 
     assert response.status_code == 422, (
         f"Expected status code 422 for invalid parameters, but got {response.status_code}"
@@ -104,7 +116,8 @@ async def test_invalid_page_and_per_page(client, page, per_page, expected_detail
 
     assert "detail" in response_data, "Expected 'detail' in the response, but it was missing"
 
-    assert any(expected_detail in error["msg"] for error in response_data["detail"]), (
+    assert any(expected_detail in error["msg"] for error in
+               response_data["detail"]), (
         f"Expected error message '{expected_detail}' in the response details, but got {response_data['detail']}"
     )
 
@@ -139,7 +152,8 @@ async def test_page_exceeds_maximum(client, db_session, seed_database):
 
     max_page = (total_movies + per_page - 1) // per_page
 
-    response = await client.get(f"/api/v1/theater/movies/?page={max_page + 1}&per_page={per_page}")
+    response = await client.get(
+        f"/api/v1/theater/movies/?page={max_page + 1}&per_page={per_page}")
 
     assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
     response_data = response.json()
@@ -187,7 +201,8 @@ async def test_movie_list_with_pagination(client, db_session, seed_database):
     per_page = 5
     offset = (page - 1) * per_page
 
-    response = await client.get(f"/api/v1/theater/movies/?page={page}&per_page={per_page}")
+    response = await client.get(
+        f"/api/v1/theater/movies/?page={page}&per_page={per_page}")
     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
 
     response_data = response.json()
@@ -218,12 +233,15 @@ async def test_movie_list_with_pagination(client, db_session, seed_database):
     expected_prev_page = f"/theater/movies/?page={page - 1}&per_page={per_page}" if page > 1 else None
     expected_next_page = f"/theater/movies/?page={page + 1}&per_page={per_page}" if page < total_pages else None
 
-    assert response_data["prev_page"] == expected_prev_page, "Previous page link mismatch."
-    assert response_data["next_page"] == expected_next_page, "Next page link mismatch."
+    assert response_data[
+               "prev_page"] == expected_prev_page, "Previous page link mismatch."
+    assert response_data[
+               "next_page"] == expected_next_page, "Next page link mismatch."
 
 
 @pytest.mark.asyncio
-async def test_movie_list_with_filter_by_genres(client, db_session, seed_database):
+async def test_movie_list_with_filter_by_genres(client, db_session,
+                                                seed_database):
     """
     Test the `/movies/` endpoint with filter by genres.
 
@@ -237,8 +255,8 @@ async def test_movie_list_with_filter_by_genres(client, db_session, seed_databas
     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
     response_data = response.json()
     for movie in response_data["movies"]:
-        assert "action" in [genre["name"] for genre in movie["genres"]], "in every movie should by genre - action"
-
+        assert "action" in [genre["name"] for genre in movie[
+            "genres"]], "in every movie should be genre - action"
 
     response = await client.get("/api/v1/theater/movies/?genres=action|horror")
     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
@@ -247,10 +265,7 @@ async def test_movie_list_with_filter_by_genres(client, db_session, seed_databas
         genres = [genre["name"] for genre in movie["genres"]]
         assert (
                 ("action" in genres) or ("horror" in genres)
-        ), "in every movie should by genre - action or horror"
-    for movie in response_data["movies"]:
-        print(movie['genres'])
-
+        ), "in every movie should be genre - action or horror"
     response = await client.get("/api/v1/theater/movies/?genres=action,horror")
     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
     response_data = response.json()
@@ -258,11 +273,48 @@ async def test_movie_list_with_filter_by_genres(client, db_session, seed_databas
         genres = [genre["name"] for genre in movie["genres"]]
         assert (
                 ("action" in genres) and ("horror" in genres)
-        ), "in every movie should by genre - action and horror"
+        ), "in every movie should be genre - action and horror"
 
 
+@pytest.mark.asyncio
+async def test_movie_list_with_filter_by_stars(client, db_session,
+                                               seed_database):
+    """
+    Test the `/movies/` endpoint with filter by stars.
 
+    Verifies the following:
+    - The response status code is 200.
+    - Total items and total pages match the expected values from the database.
+    - All items should satisfy the filtering parameters
+    """
+    star_1 = "Ben Stiller"
+    star_2 = "Gwyneth Paltrow"
+    response = await client.get(f"/api/v1/theater/movies/?stars={star_1}")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
 
+    for movie in response_data["movies"]:
+        stars = {star["name"] for star in movie["stars"]}
+        assert star_1 in stars, f"in every movie should by star - {star_1}"
+
+    response = await client.get(
+        f"/api/v1/theater/movies/?stars={star_1}|{star_2}")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
+    for movie in response_data["movies"]:
+        stars = {star["name"] for star in movie["stars"]}
+        assert (
+                (star_1 in stars) or (star_2 in stars)
+        ), "in every movie should be stars - {star_1} or {star_2}"
+
+    response = await client.get(
+        f"/api/v1/theater/movies/?stars={star_1},{star_2}")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
+    for movie in response_data["movies"]:
+        stars = {star["name"] for star in movie["stars"]}
+        assert stars.issuperset({star_1,
+                                 star_2}), f"in every movie should be stars - {star_1} and {star_2}"
 
 
 @pytest.mark.asyncio
@@ -278,8 +330,8 @@ async def test_movies_fields_match_schema(client, db_session, seed_database):
 
     assert "movies" in response_data, "Response missing 'movies' field."
 
-
-    expected_fields = [c.name for c in MovieModel.__table__.columns] + ["genres", "directors", "stars"]
+    expected_fields = [c.name for c in MovieModel.__table__.columns] + [
+        "genres", "directors", "stars"]
 
     for movie in response_data["movies"]:
         assert set(movie.keys()) == set(expected_fields), (
@@ -300,7 +352,8 @@ async def test_get_movie_by_id_not_found(client):
     assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
 
     response_data = response.json()
-    assert response_data == {"detail": "Movie with the given ID was not found."}, (
+    assert response_data == {
+        "detail": "Movie with the given ID was not found."}, (
         f"Expected error message not found. Got: {response_data}"
     )
 
@@ -336,12 +389,15 @@ async def test_get_movie_by_id_valid(client, db_session, seed_database):
 
     response_data = response.json()
 
-    assert response_data["id"] == expected_movie.id, "Returned ID does not match the requested ID."
-    assert response_data["name"] == expected_movie.name, "Returned name does not match the expected name."
+    assert response_data[
+               "id"] == expected_movie.id, "Returned ID does not match the requested ID."
+    assert response_data[
+               "name"] == expected_movie.name, "Returned name does not match the expected name."
 
 
 @pytest.mark.asyncio
-async def test_get_movie_by_id_fields_match_database(client, db_session, seed_database):
+async def test_get_movie_by_id_fields_match_database(client, db_session,
+                                                     seed_database):
     """
     Test that the `/movies/{movie_id}` endpoint returns all fields matching the database data.
     """
@@ -366,34 +422,47 @@ async def test_get_movie_by_id_fields_match_database(client, db_session, seed_da
 
     assert response_data["id"] == random_movie.id, "ID does not match."
     assert response_data["name"] == random_movie.name, "Name does not match."
-    assert response_data["date"] == random_movie.date.isoformat(), "Date does not match."
-    assert response_data["score"] == random_movie.score, "Score does not match."
-    assert response_data["overview"] == random_movie.overview, "Overview does not match."
-    assert response_data["status"] == random_movie.status.value, "Status does not match."
-    assert response_data["budget"] == float(random_movie.budget), "Budget does not match."
-    assert response_data["revenue"] == random_movie.revenue, "Revenue does not match."
+    assert response_data[
+               "date"] == random_movie.date.isoformat(), "Date does not match."
+    assert response_data[
+               "score"] == random_movie.score, "Score does not match."
+    assert response_data[
+               "overview"] == random_movie.overview, "Overview does not match."
+    assert response_data[
+               "status"] == random_movie.status.value, "Status does not match."
+    assert response_data["budget"] == float(
+        random_movie.budget), "Budget does not match."
+    assert response_data[
+               "revenue"] == random_movie.revenue, "Revenue does not match."
 
-    assert response_data["country"]["id"] == random_movie.country.id, "Country ID does not match."
-    assert response_data["country"]["code"] == random_movie.country.code, "Country code does not match."
-    assert response_data["country"]["name"] == random_movie.country.name, "Country name does not match."
+    assert response_data["country"][
+               "id"] == random_movie.country.id, "Country ID does not match."
+    assert response_data["country"][
+               "code"] == random_movie.country.code, "Country code does not match."
+    assert response_data["country"][
+               "name"] == random_movie.country.name, "Country name does not match."
 
     actual_genres = sorted(response_data["genres"], key=lambda x: x["id"])
     expected_genres = sorted(
-        [{"id": genre.id, "name": genre.name} for genre in random_movie.genres],
+        [{"id": genre.id, "name": genre.name} for genre in
+         random_movie.genres],
         key=lambda x: x["id"]
     )
     assert actual_genres == expected_genres, "Genres do not match."
 
     actual_actors = sorted(response_data["actors"], key=lambda x: x["id"])
     expected_actors = sorted(
-        [{"id": actor.id, "name": actor.name} for actor in random_movie.actors],
+        [{"id": actor.id, "name": actor.name} for actor in
+         random_movie.actors],
         key=lambda x: x["id"]
     )
     assert actual_actors == expected_actors, "Actors do not match."
 
-    actual_languages = sorted(response_data["languages"], key=lambda x: x["id"])
+    actual_languages = sorted(response_data["languages"],
+                              key=lambda x: x["id"])
     expected_languages = sorted(
-        [{"id": lang.id, "name": lang.name} for lang in random_movie.languages],
+        [{"id": lang.id, "name": lang.name} for lang in
+         random_movie.languages],
         key=lambda x: x["id"]
     )
     assert actual_languages == expected_languages, "Languages do not match."
@@ -423,10 +492,14 @@ async def test_create_movie_and_related_models(client, db_session):
     assert response.status_code == 201, f"Expected status code 201, but got {response.status_code}"
 
     response_data = response.json()
-    assert response_data["name"] == movie_data["name"], "Movie name does not match."
-    assert response_data["date"] == movie_data["date"], "Movie date does not match."
-    assert response_data["score"] == movie_data["score"], "Movie score does not match."
-    assert response_data["overview"] == movie_data["overview"], "Movie overview does not match."
+    assert response_data["name"] == movie_data[
+        "name"], "Movie name does not match."
+    assert response_data["date"] == movie_data[
+        "date"], "Movie date does not match."
+    assert response_data["score"] == movie_data[
+        "score"], "Movie score does not match."
+    assert response_data["overview"] == movie_data[
+        "overview"], "Movie overview does not match."
 
     for genre_name in movie_data["genres"]:
         stmt = select(GenreModel).where(GenreModel.name == genre_name)
@@ -446,7 +519,8 @@ async def test_create_movie_and_related_models(client, db_session):
         language = result.scalars().first()
         assert language is not None, f"Language '{language_name}' was not created."
 
-    stmt = select(CountryModel).where(CountryModel.code == movie_data["country"])
+    stmt = select(CountryModel).where(
+        CountryModel.code == movie_data["country"])
     result = await db_session.execute(stmt)
     country = result.scalars().first()
     assert country is not None, f"Country '{movie_data['country']}' was not created."
@@ -517,7 +591,8 @@ async def test_delete_movie_not_found(client):
     """
     non_existent_id = 99999
 
-    response = await client.delete(f"/api/v1/theater/movies/{non_existent_id}/")
+    response = await client.delete(
+        f"/api/v1/theater/movies/{non_existent_id}/")
     assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
 
     response_data = response.json()
@@ -543,7 +618,8 @@ async def test_update_movie_success(client, db_session, seed_database):
         "score": 95.0,
     }
 
-    response = await client.patch(f"/api/v1/theater/movies/{movie_id}/", json=update_data)
+    response = await client.patch(f"/api/v1/theater/movies/{movie_id}/",
+                                  json=update_data)
     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
 
     response_data = response.json()
@@ -557,8 +633,10 @@ async def test_update_movie_success(client, db_session, seed_database):
     result_check = await db_session.execute(stmt_check)
     updated_movie = result_check.scalars().first()
 
-    assert updated_movie.name == update_data["name"], "Movie name was not updated."
-    assert updated_movie.score == update_data["score"], "Movie score was not updated."
+    assert updated_movie.name == update_data[
+        "name"], "Movie name was not updated."
+    assert updated_movie.score == update_data[
+        "score"], "Movie score was not updated."
 
 
 @pytest.mark.asyncio
@@ -572,7 +650,8 @@ async def test_update_movie_not_found(client):
         "score": 90.0
     }
 
-    response = await client.patch(f"/api/v1/theater/movies/{non_existent_id}/", json=update_data)
+    response = await client.patch(f"/api/v1/theater/movies/{non_existent_id}/",
+                                  json=update_data)
     assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
 
     response_data = response.json()
