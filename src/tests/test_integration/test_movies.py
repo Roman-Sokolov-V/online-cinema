@@ -162,6 +162,31 @@ async def test_page_exceeds_maximum(client, db_session, seed_database):
 
 
 @pytest.mark.asyncio
+async def test_movies_sorted_by_id_desc(client, db_session, seed_database):
+    """
+    Test that movies are returned sorted by `id` in descending order
+    and match the expected data from the database.
+    """
+    response = await client.get("/api/v1/theater/movies/?page=1&per_page=10")
+
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+
+    response_data = response.json()
+
+    stmt = select(MovieModel).order_by(MovieModel.id.desc()).limit(10)
+    result = await db_session.execute(stmt)
+    expected_movies = result.scalars().all()
+
+    expected_movie_ids = [movie.id for movie in expected_movies]
+    returned_movie_ids = [movie["id"] for movie in response_data["movies"]]
+
+    assert returned_movie_ids == expected_movie_ids, (
+        f"Movies are not sorted by `id` in descending order. "
+        f"Expected: {expected_movie_ids}, but got: {returned_movie_ids}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_movies_sorted_by_price_desc(client, db_session, seed_database):
     """
     Test that movies are returned sorted by `price` in descending order
@@ -214,18 +239,19 @@ async def test_movies_sorted_by_price_asc(client, db_session, seed_database):
 
 
 @pytest.mark.asyncio
-async def test_movies_sorted_by_id_desc(client, db_session, seed_database):
+async def test_movies_sorted_by_year_desc(client, db_session, seed_database):
     """
-    Test that movies are returned sorted by `id` in descending order
+    Test that movies are returned sorted by `year` in descending order
     and match the expected data from the database.
     """
-    response = await client.get("/api/v1/theater/movies/?page=1&per_page=10")
+    response = await client.get(
+        "/api/v1/theater/movies/?page=1&per_page=10&sort_params=newer")
 
     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
 
     response_data = response.json()
 
-    stmt = select(MovieModel).order_by(MovieModel.id.desc()).limit(10)
+    stmt = select(MovieModel).order_by(MovieModel.year.desc()).limit(10)
     result = await db_session.execute(stmt)
     expected_movies = result.scalars().all()
 
@@ -233,7 +259,33 @@ async def test_movies_sorted_by_id_desc(client, db_session, seed_database):
     returned_movie_ids = [movie["id"] for movie in response_data["movies"]]
 
     assert returned_movie_ids == expected_movie_ids, (
-        f"Movies are not sorted by `id` in descending order. "
+        f"Movies are not sorted by `year` in descending order. "
+        f"Expected: {expected_movie_ids}, but got: {returned_movie_ids}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_movies_sorted_by_year_asc(client, db_session, seed_database):
+    """
+    Test that movies are returned sorted by `year` in descending order
+    and match the expected data from the database.
+    """
+    response = await client.get(
+        "/api/v1/theater/movies/?page=1&per_page=10&sort_params=older")
+
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+
+    response_data = response.json()
+
+    stmt = select(MovieModel).order_by(MovieModel.year.asc()).limit(10)
+    result = await db_session.execute(stmt)
+    expected_movies = result.scalars().all()
+
+    expected_movie_ids = [movie.id for movie in expected_movies]
+    returned_movie_ids = [movie["id"] for movie in response_data["movies"]]
+
+    assert returned_movie_ids == expected_movie_ids, (
+        f"Movies are not sorted by `year` in ascending order. "
         f"Expected: {expected_movie_ids}, but got: {returned_movie_ids}"
     )
 
