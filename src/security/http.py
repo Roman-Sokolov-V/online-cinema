@@ -23,7 +23,7 @@ def check_token(authorization) -> str:
     return token
 
 
-def get_token(authorization: Optional[str] = Header(default=None)) -> str:
+def get_auth_token(authorization: str = Header(...)) -> str:
     """
     Extracts the Bearer token from the Authorization header.
 
@@ -33,7 +33,29 @@ def get_token(authorization: Optional[str] = Header(default=None)) -> str:
             - 401 Unauthorized if the Authorization header is missing.
             - 401 Unauthorized if the header format is invalid.
     """
+    return check_token(authorization)
 
+
+def get_optional_auth_token(
+        authorization: Optional[str] = Header(default=None)) -> None:
+    """
+    For swagger documentation only, for view not required authorization field
+    :param authorization: authorization header value.
+    """
+    pass
+
+
+def get_token(request: Request) -> str:
+    """
+    Extracts the Bearer token from request.
+
+    :param request: request value.
+    :return: Extracted token string.
+    :raises HTTPException:
+            - 401 Unauthorized if the Authorization header is missing.
+            - 401 Unauthorized if the header format is invalid.
+    """
+    authorization = request.headers.get("Authorization")
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
