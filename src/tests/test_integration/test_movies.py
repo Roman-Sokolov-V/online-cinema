@@ -291,6 +291,32 @@ async def test_movies_sorted_by_year_asc(client, db_session, seed_database):
 
 
 @pytest.mark.asyncio
+async def test_movies_sorted_by_imdb_desc(client, db_session, seed_database):
+    """
+    Test that movies are returned sorted by `imdb` in descending order
+    and match the expected data from the database.
+    """
+    response = await client.get(
+        "/api/v1/theater/movies/?page=1&per_page=10&sort_params=rating")
+
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+
+    response_data = response.json()
+
+    stmt = select(MovieModel).order_by(MovieModel.imdb.desc()).limit(10)
+    result = await db_session.execute(stmt)
+    expected_movies = result.scalars().all()
+
+    expected_movie_ids = [movie.id for movie in expected_movies]
+    returned_movie_ids = [movie["id"] for movie in response_data["movies"]]
+
+    assert returned_movie_ids == expected_movie_ids, (
+        f"Movies are not sorted by `imdb` in descending order. "
+        f"Expected: {expected_movie_ids}, but got: {returned_movie_ids}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_movie_list_with_pagination(client, db_session, seed_database):
     """
     Test the `/movies/` endpoint with pagination parameters.
