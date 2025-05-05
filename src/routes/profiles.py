@@ -148,6 +148,7 @@ async def create_profile(
 
 @router.patch(
     "/users/{user_id}/profile/",
+    dependencies=[Depends(is_owner_or_admin)],
     response_model=ProfileResponseSchema,
     summary="Update existing profile",
     status_code=status.HTTP_200_OK
@@ -158,7 +159,6 @@ async def update_profile(
         s3_client: S3StorageInterface = Depends(get_s3_storage_client),
         profile_data: ProfileUpdateSchema = Depends(
             ProfileUpdateSchema.from_form),
-        permission: None = Depends(is_owner_or_admin),
 ) -> ProfileResponseSchema:
     """
         Update a user profile.
@@ -174,7 +174,7 @@ async def update_profile(
             db (AsyncSession): The asynchronous database session.
             s3_client (S3StorageInterface): The asynchronous S3 storage client.
             profile_data (ProfileCreateSchema): The profile data from the form.
-            permission: validate header, token and permission
+
 
         Returns:
             ProfileResponseSchema: The created user profile details.
