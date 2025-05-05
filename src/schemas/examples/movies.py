@@ -54,6 +54,14 @@ actor_schema_example = {
     "name": "Jimmy Fallon"
 }
 
+director_schema_example = {
+    "id": 1,
+    "name": "Steven Spielberg"
+}
+
+
+
+
 movie_detail_schema_example = {
     **movie_item_schema_example,
     "status": "Released",

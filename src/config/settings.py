@@ -67,5 +67,5 @@ class TestingSettings(BaseAppSettings):
         object.__setattr__(
             self,
             'PATH_TO_MOVIES_CSV',
-            str(self.BASE_DIR / "database" / "seed_data" / "test_data.csv")
+            str(self.BASE_DIR / "database" / "seed_data" / "imdb_top_1000.csv")
         )

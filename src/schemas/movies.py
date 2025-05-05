@@ -1,9 +1,11 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional, List
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from database.models.movies import MovieStatusEnum
+from database import GenreModel, StarModel, DirectorModel
 from schemas.examples.movies import (
     country_schema_example,
     language_schema_example,
@@ -13,37 +15,9 @@ from schemas.examples.movies import (
     movie_list_response_schema_example,
     movie_create_schema_example,
     movie_detail_schema_example,
-    movie_update_schema_example
+    movie_update_schema_example,
+    director_schema_example
 )
-
-
-class LanguageSchema(BaseModel):
-    id: int
-    name: str
-
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                language_schema_example
-            ]
-        }
-    }
-
-
-class CountrySchema(BaseModel):
-    id: int
-    code: str
-    name: Optional[str]
-
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                country_schema_example
-            ]
-        }
-    }
 
 
 class GenreSchema(BaseModel):
@@ -60,7 +34,7 @@ class GenreSchema(BaseModel):
     }
 
 
-class ActorSchema(BaseModel):
+class StarsSchema(BaseModel):
     id: int
     name: str
 
@@ -74,34 +48,43 @@ class ActorSchema(BaseModel):
     }
 
 
+class DirectorSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                director_schema_example
+            ]
+        }
+    }
+
+
 class MovieBaseSchema(BaseModel):
-    name: str = Field(..., max_length=255)
-    date: date
-    score: float = Field(..., ge=0, le=100)
-    overview: str
-    status: MovieStatusEnum
-    budget: float = Field(..., ge=0)
-    revenue: float = Field(..., ge=0)
+    name: str
+    uuid: UUID
+    year: int = Field(..., ge=1888, le=date.today().year)
+    time: int
+    imdb: float = Field(..., ge=1.0, le=10.0)
+    votes: int = Field(..., ge=1)
+    meta_score: Optional[float] = Field(None, ge=0.0)
+    gross: Optional[float] = Field(None, ge=0.0)
+    description: str
+    price: Decimal = Field(..., ge=0, le=Decimal("99999999.99"))
+    certification_id: int
 
     model_config = {
         "from_attributes": True
     }
 
-    @field_validator("date")
-    @classmethod
-    def validate_date(cls, value):
-        current_year = datetime.now().year
-        if value.year > current_year + 1:
-            raise ValueError(f"The year in 'date' cannot be greater than {current_year + 1}.")
-        return value
-
 
 class MovieDetailSchema(MovieBaseSchema):
     id: int
-    country: CountrySchema
     genres: List[GenreSchema]
-    actors: List[ActorSchema]
-    languages: List[LanguageSchema]
+    stars: List[StarsSchema]
+    directors: List[DirectorSchema]
 
     model_config = {
         "from_attributes": True,
@@ -113,25 +96,22 @@ class MovieDetailSchema(MovieBaseSchema):
     }
 
 
-class MovieListItemSchema(BaseModel):
-    id: int
-    name: str
-    date: date
-    score: float
-    overview: str
-
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_item_schema_example
-            ]
-        }
-    }
+# class MovieListItemSchema(MovieBaseSchema):
+#     id: int
+#
+#     model_config = {
+#         "from_attributes": True,
+#         "json_schema_extra": {
+#             "examples": [
+#                 movie_item_schema_example
+#             ]
+#         }
+#     }
 
 
 class MovieListResponseSchema(BaseModel):
-    movies: List[MovieListItemSchema]
+    #movies: List[MovieListItemSchema]
+    movies: List[MovieDetailSchema]
     prev_page: Optional[str]
     next_page: Optional[str]
     total_pages: int
@@ -149,16 +129,18 @@ class MovieListResponseSchema(BaseModel):
 
 class MovieCreateSchema(BaseModel):
     name: str
-    date: date
-    score: float = Field(..., ge=0, le=100)
-    overview: str
-    status: MovieStatusEnum
-    budget: float = Field(..., ge=0)
-    revenue: float = Field(..., ge=0)
-    country: str
-    genres: List[str]
-    actors: List[str]
-    languages: List[str]
+    year: int = Field(..., ge=1888, le=date.today().year)
+    time: int
+    imdb: float = Field(..., ge=1.0, le=10.0)
+    votes: int = Field(..., ge=1)
+    meta_score: Optional[float] = Field(None, ge=0.0)
+    gross: Optional[float] = Field(None, ge=0.0)
+    description: str
+    price: Decimal = Field(..., ge=0, le=Decimal("99999999.99"))
+    certification_name: str
+    genres: Optional[List[str]] = None
+    stars: Optional[List[str]] = None
+    directors: Optional[List[str]] = None
 
     model_config = {
         "from_attributes": True,
@@ -169,31 +151,30 @@ class MovieCreateSchema(BaseModel):
         }
     }
 
-    @field_validator("country", mode="before")
-    @classmethod
-    def normalize_country(cls, value: str) -> str:
-        return value.upper()
+    # @field_validator("country", mode="before")
+    # @classmethod
+    # def normalize_country(cls, value: str) -> str:
+    #     return value.upper()
+    #
+    # @field_validator("genres", "actors", "languages", mode="before")
+    # @classmethod
+    # def normalize_list_fields(cls, value: List[str]) -> List[str]:
+    #     return [item.title() for item in value]
 
-    @field_validator("genres", "actors", "languages", mode="before")
-    @classmethod
-    def normalize_list_fields(cls, value: List[str]) -> List[str]:
-        return [item.title() for item in value]
-
-
-class MovieUpdateSchema(BaseModel):
-    name: Optional[str] = None
-    date: Optional[date] = None
-    score: Optional[float] = Field(None, ge=0, le=100)
-    overview: Optional[str] = None
-    status: Optional[MovieStatusEnum] = None
-    budget: Optional[float] = Field(None, ge=0)
-    revenue: Optional[float] = Field(None, ge=0)
-
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_update_schema_example
-            ]
-        }
-    }
+# class MovieUpdateSchema(BaseModel):
+#     name: Optional[str] = None
+#     date: Optional[date] = None
+#     score: Optional[float] = Field(None, ge=0, le=100)
+#     overview: Optional[str] = None
+#     status: Optional[MovieStatusEnum] = None
+#     budget: Optional[float] = Field(None, ge=0)
+#     revenue: Optional[float] = Field(None, ge=0)
+#
+#     model_config = {
+#         "from_attributes": True,
+#         "json_schema_extra": {
+#             "examples": [
+#                 movie_update_schema_example
+#             ]
+#         }
+#     }

@@ -14,7 +14,7 @@ from config import get_settings
 from database import (
     GenreModel,
     MoviesGenresModel,
-    MovieModel, UserGroupModel, UserGroupEnum, CertificationModel, StarsModel,
+    MovieModel, UserGroupModel, UserGroupEnum, CertificationModel, StarModel,
     MoviesStarsModel, MoviesDirectorsModel, DirectorModel, UserModel
 )
 from database import get_db_contextmanager
@@ -71,7 +71,8 @@ class CSVDatabaseSeeder:
 
         data["Genre"] = (
             data["Genre"]
-            .str.replace(r'\s+', '', regex=True)
+            .str.lower()
+            .replace(r'\s+', '', regex=True)
             .apply(lambda x: ','.join(sorted(set(x.split(',')))) if x != 'Unknown' else x)
         )
 
@@ -227,7 +228,7 @@ class CSVDatabaseSeeder:
             GenreModel, list(genres), 'name'
         )
         actor_map = await self._get_or_create_bulk(
-            StarsModel, list(actors), 'name'
+            StarModel, list(actors), 'name'
         )
         certificates_map = await self._get_or_create_bulk(
             CertificationModel, list(certificates), 'name'

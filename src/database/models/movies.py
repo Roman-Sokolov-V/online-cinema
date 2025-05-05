@@ -71,7 +71,7 @@ class GenreModel(Base):
         return f"<Genre(name='{self.name}')>"
 
 
-class StarsModel(Base):
+class StarModel(Base):
     __tablename__ = "stars"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -136,7 +136,7 @@ class MovieModel(Base):
         secondary=MoviesGenresModel,
         back_populates="movies"
     )
-    stars: Mapped[list[StarsModel]] = relationship(
+    stars: Mapped[list[StarModel]] = relationship(
         secondary=MoviesStarsModel,
         back_populates="movies"
     )

@@ -14,7 +14,7 @@ from database.models.movies import (
     MovieModel,
     GenreModel,
     MoviesGenresModel,
-    StarsModel,
+    StarModel,
     MoviesStarsModel,
     CertificationModel,
     DirectorModel,
