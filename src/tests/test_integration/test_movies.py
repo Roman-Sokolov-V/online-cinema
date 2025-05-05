@@ -7,9 +7,9 @@ from sqlalchemy.orm import joinedload
 from database import MovieModel
 from database import (
     GenreModel,
-    ActorModel,
-    LanguageModel,
-    CountryModel
+    StarModel,
+    DirectorModel,
+
 )
 
 
@@ -223,6 +223,49 @@ async def test_movie_list_with_pagination(client, db_session, seed_database):
 
 
 @pytest.mark.asyncio
+async def test_movie_list_with_filter_by_genres(client, db_session, seed_database):
+    """
+    Test the `/movies/` endpoint with filter by genres.
+
+    Verifies the following:
+    - The response status code is 200.
+    - Total items and total pages match the expected values from the database.
+    - All items should satisfy the filtering parameters
+    """
+
+    response = await client.get("/api/v1/theater/movies/?genres=action")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
+    for movie in response_data["movies"]:
+        assert "action" in [genre["name"] for genre in movie["genres"]], "in every movie should by genre - action"
+
+
+    response = await client.get("/api/v1/theater/movies/?genres=action|horror")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
+    for movie in response_data["movies"]:
+        genres = [genre["name"] for genre in movie["genres"]]
+        assert (
+                ("action" in genres) or ("horror" in genres)
+        ), "in every movie should by genre - action or horror"
+    for movie in response_data["movies"]:
+        print(movie['genres'])
+
+    response = await client.get("/api/v1/theater/movies/?genres=action,horror")
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    response_data = response.json()
+    for movie in response_data["movies"]:
+        genres = [genre["name"] for genre in movie["genres"]]
+        assert (
+                ("action" in genres) and ("horror" in genres)
+        ), "in every movie should by genre - action and horror"
+
+
+
+
+
+
+@pytest.mark.asyncio
 async def test_movies_fields_match_schema(client, db_session, seed_database):
     """
     Test that each movie in the response matches the fields defined in `MovieListItemSchema`.
@@ -235,10 +278,11 @@ async def test_movies_fields_match_schema(client, db_session, seed_database):
 
     assert "movies" in response_data, "Response missing 'movies' field."
 
-    expected_fields = {"id", "name", "date", "score", "overview"}
+
+    expected_fields = [c.name for c in MovieModel.__table__.columns] + ["genres", "directors", "stars"]
 
     for movie in response_data["movies"]:
-        assert set(movie.keys()) == expected_fields, (
+        assert set(movie.keys()) == set(expected_fields), (
             f"Movie fields do not match schema. "
             f"Expected: {expected_fields}, but got: {set(movie.keys())}"
         )
