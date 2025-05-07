@@ -954,7 +954,7 @@ async def test_not_admin_not_owner_try_update_user_profile(
         s3_storage_fake,
         client,
         create_user_and_profile,
-        create_activate_login_user
+
 ):
     """
     Test that an admin can create a profile for another user.

@@ -239,12 +239,13 @@ async def get_movie_list(
 
 @router.post(
     "/movies/",
+    dependencies=[Depends(is_moderator_or_admin)],
     response_model=MovieDetailSchema,
     summary="Add a new movie",
     description=(
-            "<h3>This endpoint allows clients to add a new movie to the database. "
-            "It accepts details such as name, date, genres, actors, languages, and "
-            "other attributes. The associated country, genres, actors, and languages "
+            "<h3>This endpoint allows moderators and admins add a new movie to the database. "
+            "It accepts details such as name, year, genres, stars, imdb, and "
+            "other attributes. The associated stars, directors and genres "
             "will be created or linked automatically.</h3>"
     ),
     responses={
@@ -264,21 +265,20 @@ async def get_movie_list(
 )
 async def create_movie(
         movie_data: MovieCreateSchema,
-        db: AsyncSession = Depends(get_db),
-        permissions: None = Depends(is_moderator_or_admin),
+        db: AsyncSession = Depends(get_db)
 ) -> MovieDetailSchema:
     """
     Add a new movie to the database.
 
-    This endpoint allows the creation of a new movie with details such as
-    name, release date, genres, actors, and languages. It automatically
-    handles linking or creating related entities.
+    This endpoint allows moderators and admins add a new movie to the database
+     with details such as name, year, genres, stars, imdb, time, votes,
+    meta_score, gross, description, price, certification, genres, stars,
+    directors. It automatically handles linking or creating related entities.
 
     :param movie_data: The data required to create a new movie.
     :type movie_data: MovieCreateSchema
     :param db: The SQLAlchemy async database session (provided via dependency injection).
     :type db: AsyncSession
-    :param permissions: check headers, check token, check user group
 
     :return: The created movie with all details.
     :rtype: MovieDetailSchema
@@ -299,8 +299,8 @@ async def create_movie(
         raise HTTPException(
             status_code=409,
             detail=(
-                f"A movie with the name '{movie_data.name}' and release year "
-                f"'{movie_data.year}' and time duration {movie_data.time} "
+                f"A movie with the name '{movie_data.name}', release year "
+                f"'{movie_data.year}' and duration time '{movie_data.time}' "
                 f"already exists."
             )
         )
@@ -374,8 +374,10 @@ async def create_movie(
 
         db.add(movie)
         await db.commit()
-        await db.refresh(movie,
-                         ["genres", "stars", "directors", "certification"])
+        await db.refresh(
+            movie,
+            ["genres", "stars", "directors", "certification"]
+        )
 
         return MovieDetailSchema.model_validate(movie)
 

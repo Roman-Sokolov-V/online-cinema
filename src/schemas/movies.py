@@ -7,10 +7,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from database import GenreModel, StarModel, DirectorModel
 from schemas.examples.movies import (
-    country_schema_example,
-    language_schema_example,
     genre_schema_example,
-    actor_schema_example,
+    star_schema_example,
     movie_item_schema_example,
     movie_list_response_schema_example,
     movie_create_schema_example,
@@ -42,7 +40,7 @@ class StarsSchema(BaseModel):
         "from_attributes": True,
         "json_schema_extra": {
             "examples": [
-                actor_schema_example
+                star_schema_example
             ]
         }
     }
@@ -96,22 +94,24 @@ class MovieDetailSchema(MovieBaseSchema):
     }
 
 
-# class MovieListItemSchema(MovieBaseSchema):
-#     id: int
-#
-#     model_config = {
-#         "from_attributes": True,
-#         "json_schema_extra": {
-#             "examples": [
-#                 movie_item_schema_example
-#             ]
-#         }
-#     }
+class MovieListItemSchema(MovieBaseSchema):
+    id: int
+    genres: List[GenreSchema]
+    stars: List[StarsSchema]
+    directors: List[DirectorSchema]
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                movie_item_schema_example
+            ]
+        }
+    }
 
 
 class MovieListResponseSchema(BaseModel):
-    #movies: List[MovieListItemSchema]
-    movies: List[MovieDetailSchema]
+    movies: List[MovieListItemSchema]
     prev_page: Optional[str]
     next_page: Optional[str]
     total_pages: int

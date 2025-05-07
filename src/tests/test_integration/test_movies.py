@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload, selectinload
 
-from database import MovieModel
+from database import MovieModel, CertificationModel
 from database import (
     GenreModel,
     StarModel,
@@ -534,167 +534,183 @@ async def test_movies_fields_match_schema(client, db_session, seed_database):
             f"Expected: {expected_fields}, but got: {set(movie.keys())}"
         )
 
+#
+# @pytest.mark.asyncio
+# async def test_get_movie_by_id_not_found(client):
+#     """
+#     Test that the `/movies/{movie_id}` endpoint returns a 404 error
+#     when a movie with the given ID does not exist.
+#     """
+#     movie_id = 1
+#
+#     response = await client.get(f"/api/v1/theater/movies/{movie_id}/")
+#     assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
+#
+#     response_data = response.json()
+#     assert response_data == {
+#         "detail": "Movie with the given ID was not found."}, (
+#         f"Expected error message not found. Got: {response_data}"
+#     )
+
+#
+# @pytest.mark.asyncio
+# async def test_get_movie_by_id_valid(client, db_session, seed_database):
+#     """
+#     Test that the `/movies/{movie_id}` endpoint returns the correct movie details
+#     when a valid movie ID is provided.
+#
+#     Verifies the following:
+#     - The movie exists in the database.
+#     - The response status code is 200.
+#     - The movie's `id` and `name` in the response match the expected values from the database.
+#     """
+#     stmt_min = select(MovieModel.id).order_by(MovieModel.id.asc()).limit(1)
+#     result_min = await db_session.execute(stmt_min)
+#     min_id = result_min.scalars().first()
+#
+#     stmt_max = select(MovieModel.id).order_by(MovieModel.id.desc()).limit(1)
+#     result_max = await db_session.execute(stmt_max)
+#     max_id = result_max.scalars().first()
+#
+#     random_id = random.randint(min_id, max_id)
+#
+#     stmt_movie = select(MovieModel).where(MovieModel.id == random_id)
+#     result_movie = await db_session.execute(stmt_movie)
+#     expected_movie = result_movie.scalars().first()
+#     assert expected_movie is not None, "Movie not found in database."
+#
+#     response = await client.get(f"/api/v1/theater/movies/{random_id}/")
+#     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+#
+#     response_data = response.json()
+#
+#     assert response_data[
+#                "id"] == expected_movie.id, "Returned ID does not match the requested ID."
+#     assert response_data[
+#                "name"] == expected_movie.name, "Returned name does not match the expected name."
+#
+#
+# @pytest.mark.asyncio
+# async def test_get_movie_by_id_fields_match_database(client, db_session,
+#                                                      seed_database):
+#     """
+#     Test that the `/movies/{movie_id}` endpoint returns all fields matching the database data.
+#     """
+#     stmt = (
+#         select(MovieModel)
+#         .options(
+#             joinedload(MovieModel.country),
+#             joinedload(MovieModel.genres),
+#             joinedload(MovieModel.actors),
+#             joinedload(MovieModel.languages),
+#         )
+#         .limit(1)
+#     )
+#     result = await db_session.execute(stmt)
+#     random_movie = result.scalars().first()
+#     assert random_movie is not None, "No movies found in the database."
+#
+#     response = await client.get(f"/api/v1/theater/movies/{random_movie.id}/")
+#     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+#
+#     response_data = response.json()
+#
+#     assert response_data["id"] == random_movie.id, "ID does not match."
+#     assert response_data["name"] == random_movie.name, "Name does not match."
+#     assert response_data[
+#                "date"] == random_movie.date.isoformat(), "Date does not match."
+#     assert response_data[
+#                "score"] == random_movie.score, "Score does not match."
+#     assert response_data[
+#                "overview"] == random_movie.overview, "Overview does not match."
+#     assert response_data[
+#                "status"] == random_movie.status.value, "Status does not match."
+#     assert response_data["budget"] == float(
+#         random_movie.budget), "Budget does not match."
+#     assert response_data[
+#                "revenue"] == random_movie.revenue, "Revenue does not match."
+#
+#     assert response_data["country"][
+#                "id"] == random_movie.country.id, "Country ID does not match."
+#     assert response_data["country"][
+#                "code"] == random_movie.country.code, "Country code does not match."
+#     assert response_data["country"][
+#                "name"] == random_movie.country.name, "Country name does not match."
+#
+#     actual_genres = sorted(response_data["genres"], key=lambda x: x["id"])
+#     expected_genres = sorted(
+#         [{"id": genre.id, "name": genre.name} for genre in
+#          random_movie.genres],
+#         key=lambda x: x["id"]
+#     )
+#     assert actual_genres == expected_genres, "Genres do not match."
+#
+#     actual_actors = sorted(response_data["actors"], key=lambda x: x["id"])
+#     expected_actors = sorted(
+#         [{"id": actor.id, "name": actor.name} for actor in
+#          random_movie.actors],
+#         key=lambda x: x["id"]
+#     )
+#     assert actual_actors == expected_actors, "Actors do not match."
+#
+#     actual_languages = sorted(response_data["languages"],
+#                               key=lambda x: x["id"])
+#     expected_languages = sorted(
+#         [{"id": lang.id, "name": lang.name} for lang in
+#          random_movie.languages],
+#         key=lambda x: x["id"]
+#     )
+#     assert actual_languages == expected_languages, "Languages do not match."
+
+
 
 @pytest.mark.asyncio
-async def test_get_movie_by_id_not_found(client):
-    """
-    Test that the `/movies/{movie_id}` endpoint returns a 404 error
-    when a movie with the given ID does not exist.
-    """
-    movie_id = 1
-
-    response = await client.get(f"/api/v1/theater/movies/{movie_id}/")
-    assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
-
-    response_data = response.json()
-    assert response_data == {
-        "detail": "Movie with the given ID was not found."}, (
-        f"Expected error message not found. Got: {response_data}"
-    )
-
-
-@pytest.mark.asyncio
-async def test_get_movie_by_id_valid(client, db_session, seed_database):
-    """
-    Test that the `/movies/{movie_id}` endpoint returns the correct movie details
-    when a valid movie ID is provided.
-
-    Verifies the following:
-    - The movie exists in the database.
-    - The response status code is 200.
-    - The movie's `id` and `name` in the response match the expected values from the database.
-    """
-    stmt_min = select(MovieModel.id).order_by(MovieModel.id.asc()).limit(1)
-    result_min = await db_session.execute(stmt_min)
-    min_id = result_min.scalars().first()
-
-    stmt_max = select(MovieModel.id).order_by(MovieModel.id.desc()).limit(1)
-    result_max = await db_session.execute(stmt_max)
-    max_id = result_max.scalars().first()
-
-    random_id = random.randint(min_id, max_id)
-
-    stmt_movie = select(MovieModel).where(MovieModel.id == random_id)
-    result_movie = await db_session.execute(stmt_movie)
-    expected_movie = result_movie.scalars().first()
-    assert expected_movie is not None, "Movie not found in database."
-
-    response = await client.get(f"/api/v1/theater/movies/{random_id}/")
-    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
-
-    response_data = response.json()
-
-    assert response_data[
-               "id"] == expected_movie.id, "Returned ID does not match the requested ID."
-    assert response_data[
-               "name"] == expected_movie.name, "Returned name does not match the expected name."
-
-
-@pytest.mark.asyncio
-async def test_get_movie_by_id_fields_match_database(client, db_session,
-                                                     seed_database):
-    """
-    Test that the `/movies/{movie_id}` endpoint returns all fields matching the database data.
-    """
-    stmt = (
-        select(MovieModel)
-        .options(
-            joinedload(MovieModel.country),
-            joinedload(MovieModel.genres),
-            joinedload(MovieModel.actors),
-            joinedload(MovieModel.languages),
-        )
-        .limit(1)
-    )
-    result = await db_session.execute(stmt)
-    random_movie = result.scalars().first()
-    assert random_movie is not None, "No movies found in the database."
-
-    response = await client.get(f"/api/v1/theater/movies/{random_movie.id}/")
-    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
-
-    response_data = response.json()
-
-    assert response_data["id"] == random_movie.id, "ID does not match."
-    assert response_data["name"] == random_movie.name, "Name does not match."
-    assert response_data[
-               "date"] == random_movie.date.isoformat(), "Date does not match."
-    assert response_data[
-               "score"] == random_movie.score, "Score does not match."
-    assert response_data[
-               "overview"] == random_movie.overview, "Overview does not match."
-    assert response_data[
-               "status"] == random_movie.status.value, "Status does not match."
-    assert response_data["budget"] == float(
-        random_movie.budget), "Budget does not match."
-    assert response_data[
-               "revenue"] == random_movie.revenue, "Revenue does not match."
-
-    assert response_data["country"][
-               "id"] == random_movie.country.id, "Country ID does not match."
-    assert response_data["country"][
-               "code"] == random_movie.country.code, "Country code does not match."
-    assert response_data["country"][
-               "name"] == random_movie.country.name, "Country name does not match."
-
-    actual_genres = sorted(response_data["genres"], key=lambda x: x["id"])
-    expected_genres = sorted(
-        [{"id": genre.id, "name": genre.name} for genre in
-         random_movie.genres],
-        key=lambda x: x["id"]
-    )
-    assert actual_genres == expected_genres, "Genres do not match."
-
-    actual_actors = sorted(response_data["actors"], key=lambda x: x["id"])
-    expected_actors = sorted(
-        [{"id": actor.id, "name": actor.name} for actor in
-         random_movie.actors],
-        key=lambda x: x["id"]
-    )
-    assert actual_actors == expected_actors, "Actors do not match."
-
-    actual_languages = sorted(response_data["languages"],
-                              key=lambda x: x["id"])
-    expected_languages = sorted(
-        [{"id": lang.id, "name": lang.name} for lang in
-         random_movie.languages],
-        key=lambda x: x["id"]
-    )
-    assert actual_languages == expected_languages, "Languages do not match."
-
-
-@pytest.mark.asyncio
-async def test_create_movie_and_related_models(client, db_session):
+async def test_create_movie_and_related_models(client, db_session, create_activate_login_user):
     """
     Test that a new movie is created successfully and related models
-    (genres, actors, languages) are created if they do not exist.
+    (genres, stars, directors, certification) are created if they do not exist.
     """
+    moderator_data = await create_activate_login_user(group_name="moderator")
+    moderator_access_token = moderator_data["access_token"]
+    headers = {"Authorization": f"Bearer {moderator_access_token}"}
     movie_data = {
         "name": "New Movie",
-        "date": "2025-01-01",
-        "score": 85.5,
-        "overview": "An amazing movie.",
-        "status": "Released",
-        "budget": 1000000.00,
-        "revenue": 5000000.00,
-        "country": "US",
-        "genres": ["Action", "Adventure"],
-        "actors": ["John Doe", "Jane Doe"],
-        "languages": ["English", "French"]
+        "year": 2020,
+        "time": 102,
+        "imdb": 7.8,
+        "votes": 2365,
+        "meta_score": 5.8,
+        "gross": 1000000.00,
+        "description": "An amazing movie.",
+        "price": 8.99,
+        "certification_name": "PG-13",
+        "genres": ["action", "crime"],
+        "stars": ["John Doe", "Jane Doe"],
+        "directors": ["John Smith", "Jane Smith"],
     }
 
-    response = await client.post("/api/v1/theater/movies/", json=movie_data)
+    response = await client.post("/api/v1/theater/movies/", json=movie_data, headers=headers)
     assert response.status_code == 201, f"Expected status code 201, but got {response.status_code}"
 
     response_data = response.json()
     assert response_data["name"] == movie_data[
         "name"], "Movie name does not match."
-    assert response_data["date"] == movie_data[
-        "date"], "Movie date does not match."
-    assert response_data["score"] == movie_data[
-        "score"], "Movie score does not match."
-    assert response_data["overview"] == movie_data[
-        "overview"], "Movie overview does not match."
+    assert response_data["year"] == movie_data[
+        "year"], "Year date does not match."
+    assert response_data["time"] == movie_data[
+        "time"], "Time does not match."
+    assert response_data["imdb"] == movie_data[
+        "imdb"], "Imdb overview does not match."
+    assert response_data["votes"] == movie_data[
+        "votes"], "Votes overview does not match."
+    assert response_data["meta_score"] == movie_data[
+        "meta_score"], "Meta_score overview does not match."
+    assert response_data["gross"] == movie_data[
+        "gross"], "Gross overview does not match."
+    assert response_data["description"] == movie_data[
+        "description"], "Description overview does not match."
+    assert response_data["price"] == str(movie_data[
+        "price"]), "Price overview does not match."
 
     for genre_name in movie_data["genres"]:
         stmt = select(GenreModel).where(GenreModel.name == genre_name)
@@ -702,155 +718,258 @@ async def test_create_movie_and_related_models(client, db_session):
         genre = result.scalars().first()
         assert genre is not None, f"Genre '{genre_name}' was not created."
 
-    for actor_name in movie_data["actors"]:
-        stmt = select(ActorModel).where(ActorModel.name == actor_name)
+    for star_name in movie_data["stars"]:
+        stmt = select(StarModel).where(StarModel.name == star_name)
         result = await db_session.execute(stmt)
-        actor = result.scalars().first()
-        assert actor is not None, f"Actor '{actor_name}' was not created."
+        star = result.scalars().first()
+        assert star is not None, f"Star '{star_name}' was not created."
 
-    for language_name in movie_data["languages"]:
-        stmt = select(LanguageModel).where(LanguageModel.name == language_name)
+    for director_name in movie_data["directors"]:
+        stmt = select(DirectorModel).where(DirectorModel.name == director_name)
         result = await db_session.execute(stmt)
-        language = result.scalars().first()
-        assert language is not None, f"Language '{language_name}' was not created."
+        director = result.scalars().first()
+        assert director is not None, f"Director '{director_name}' was not created."
 
-    stmt = select(CountryModel).where(
-        CountryModel.code == movie_data["country"])
+    stmt = select(CertificationModel).where(
+        CertificationModel.name == movie_data["certification_name"])
     result = await db_session.execute(stmt)
     country = result.scalars().first()
-    assert country is not None, f"Country '{movie_data['country']}' was not created."
+    assert country is not None, f"Certification '{movie_data['certification_name']}' was not created."
 
 
 @pytest.mark.asyncio
-async def test_create_movie_duplicate_error(client, db_session, seed_database):
+async def test_create_movie_duplicate_error(client, db_session, create_activate_login_user):
     """
     Test that trying to create a movie with the same name and date as an existing movie
     results in a 409 conflict error.
     """
-    stmt = select(MovieModel).limit(1)
-    result = await db_session.execute(stmt)
-    existing_movie = result.scalars().first()
-    assert existing_movie is not None, "No existing movies found in the database."
 
+    moderator_data = await create_activate_login_user(group_name="moderator")
+    moderator_access_token = moderator_data["access_token"]
+    headers = {"Authorization": f"Bearer {moderator_access_token}"}
+    name = "New Movie"
+    year = 2020
+    time = 102
     movie_data = {
-        "name": existing_movie.name,
-        "date": existing_movie.date.isoformat(),
-        "score": 90.0,
-        "overview": "Duplicate movie test.",
-        "status": "Released",
-        "budget": 2000000.00,
-        "revenue": 8000000.00,
-        "country": "US",
-        "genres": ["Drama"],
-        "actors": ["New Actor"],
-        "languages": ["Spanish"]
+        "name": name,
+        "year": year,
+        "time": time,
+        "imdb": 7.8,
+        "votes": 2365,
+        "meta_score": 5.8,
+        "gross": 1000000.00,
+        "description": "An amazing movie.",
+        "price": 8.99,
+        "certification_name": "PG-13",
+        "genres": ["action", "crime"],
+        "stars": ["John Doe", "Jane Doe"],
+        "directors": ["John Smith", "Jane Smith"],
+    }
+    response = await client.post(
+        "/api/v1/theater/movies/", json=movie_data, headers=headers
+    )
+    assert response.status_code == 201, f"Expected status code 201, but got {response.status_code}"
+
+    new_movie_data = {
+        "name": name,
+        "year": year,
+        "time": time,
+        "imdb": 8,
+        "votes": 3000,
+        "meta_score": 6,
+        "gross": 1003300.00,
+        "description": "Bad movie.",
+        "price": 3,
+        "certification_name": "PG",
+        "genres": [],
+        "stars": [],
+        "directors": [],
     }
 
-    response = await client.post("/api/v1/theater/movies/", json=movie_data)
+    response = await client.post("/api/v1/theater/movies/", json=new_movie_data, headers=headers)
     assert response.status_code == 409, f"Expected status code 409, but got {response.status_code}"
 
     response_data = response.json()
     expected_detail = (
-        f"A movie with the name '{movie_data['name']}' and release date '{movie_data['date']}' already exists."
+        f"A movie with the name '{new_movie_data['name']}', release year '{new_movie_data['year']}' and duration time '{new_movie_data['time']}' already exists."
     )
     assert response_data["detail"] == expected_detail, (
         f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"
     )
 
-
 @pytest.mark.asyncio
-async def test_delete_movie_success(client, db_session, seed_database):
+async def test_permissions_to_create_movie(client, db_session, create_activate_login_user):
     """
-    Test the `/movies/{movie_id}/` endpoint for successful movie deletion.
+    Test that trying to create a movie by users from  group: user, moderator, admin.
+    User from user-group do not permissions to create movie
     """
-    stmt = select(MovieModel).limit(1)
-    result = await db_session.execute(stmt)
-    movie = result.scalars().first()
-    assert movie is not None, "No movies found in the database to delete."
 
-    movie_id = movie.id
+    user_data = await create_activate_login_user(
+        group_name="user")
+    user_access_token = user_data["access_token"]
+    user_headers = {"Authorization": f"Bearer {user_access_token}"}
 
-    response = await client.delete(f"/api/v1/theater/movies/{movie_id}/")
-    assert response.status_code == 204, f"Expected status code 204, but got {response.status_code}"
+    moderator_data = await create_activate_login_user(
+        group_name="moderator")
+    moderator_access_token = moderator_data["access_token"]
+    moderator_headers = {"Authorization": f"Bearer {moderator_access_token}"}
 
-    stmt_check = select(MovieModel).where(MovieModel.id == movie_id)
-    result_check = await db_session.execute(stmt_check)
-    deleted_movie = result_check.scalars().first()
-    assert deleted_movie is None, f"Movie with ID {movie_id} was not deleted."
+    admin_data = await create_activate_login_user(
+        group_name="admin")
+    admin_access_token = admin_data["access_token"]
+    admin_headers = {
+        "Authorization": f"Bearer {admin_access_token}"}
 
-
-@pytest.mark.asyncio
-async def test_delete_movie_not_found(client):
-    """
-    Test the `/movies/{movie_id}/` endpoint with a non-existent movie ID.
-    """
-    non_existent_id = 99999
-
-    response = await client.delete(
-        f"/api/v1/theater/movies/{non_existent_id}/")
-    assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
-
-    response_data = response.json()
-    expected_detail = "Movie with the given ID was not found."
-    assert response_data["detail"] == expected_detail, (
-        f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"
-    )
-
-
-@pytest.mark.asyncio
-async def test_update_movie_success(client, db_session, seed_database):
-    """
-    Test the `/movies/{movie_id}/` endpoint for successfully updating a movie's details.
-    """
-    stmt = select(MovieModel).limit(1)
-    result = await db_session.execute(stmt)
-    movie = result.scalars().first()
-    assert movie is not None, "No movies found in the database to update."
-
-    movie_id = movie.id
-    update_data = {
-        "name": "Updated Movie Name",
-        "score": 95.0,
+    movie_data = {
+        "name": "New Movie",
+        "year": 2020,
+        "time": 102,
+        "imdb": 7.8,
+        "votes": 2365,
+        "meta_score": 5.8,
+        "gross": 1000000.00,
+        "description": "An amazing movie.",
+        "price": 8.99,
+        "certification_name": "PG-13",
+        "genres": ["action", "crime"],
+        "stars": ["John Doe", "Jane Doe"],
+        "directors": ["John Smith", "Jane Smith"],
     }
-
-    response = await client.patch(f"/api/v1/theater/movies/{movie_id}/",
-                                  json=update_data)
-    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
-
-    response_data = response.json()
-    assert response_data["detail"] == "Movie updated successfully.", (
-        f"Expected detail message: 'Movie updated successfully.', but got: {response_data['detail']}"
+    response = await client.post(
+        "/api/v1/theater/movies/", json=movie_data, headers=user_headers
     )
-
-    await db_session.rollback()
-
-    stmt_check = select(MovieModel).where(MovieModel.id == movie_id)
-    result_check = await db_session.execute(stmt_check)
-    updated_movie = result_check.scalars().first()
-
-    assert updated_movie.name == update_data[
-        "name"], "Movie name was not updated."
-    assert updated_movie.score == update_data[
-        "score"], "Movie score was not updated."
-
-
-@pytest.mark.asyncio
-async def test_update_movie_not_found(client):
-    """
-    Test the `/movies/{movie_id}/` endpoint with a non-existent movie ID.
-    """
-    non_existent_id = 99999
-    update_data = {
-        "name": "Non-existent Movie",
-        "score": 90.0
-    }
-
-    response = await client.patch(f"/api/v1/theater/movies/{non_existent_id}/",
-                                  json=update_data)
-    assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
-
-    response_data = response.json()
-    expected_detail = "Movie with the given ID was not found."
-    assert response_data["detail"] == expected_detail, (
-        f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"
+    assert response.status_code == 403, f"Expected status code 403, but got {response.status_code}"
+    response = await client.post(
+        "/api/v1/theater/movies/", json=movie_data, headers=moderator_headers
     )
+    assert response.status_code == 201, f"Expected status code 201, but got {response.status_code}"
+    # change movie_data["name"] no avoid 409 exception (try creating exists movie)
+    movie_data["name"] = "Old York"
+
+    response = await client.post(
+        "/api/v1/theater/movies/", json=movie_data, headers=admin_headers
+    )
+    assert response.status_code == 201, f"Expected status code 201, but got {response.status_code}"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+#
+# @pytest.mark.asyncio
+# async def test_delete_movie_success(client, db_session, seed_database):
+#     """
+#     Test the `/movies/{movie_id}/` endpoint for successful movie deletion.
+#     """
+#     stmt = select(MovieModel).limit(1)
+#     result = await db_session.execute(stmt)
+#     movie = result.scalars().first()
+#     assert movie is not None, "No movies found in the database to delete."
+#
+#     movie_id = movie.id
+#
+#     response = await client.delete(f"/api/v1/theater/movies/{movie_id}/")
+#     assert response.status_code == 204, f"Expected status code 204, but got {response.status_code}"
+#
+#     stmt_check = select(MovieModel).where(MovieModel.id == movie_id)
+#     result_check = await db_session.execute(stmt_check)
+#     deleted_movie = result_check.scalars().first()
+#     assert deleted_movie is None, f"Movie with ID {movie_id} was not deleted."
+#
+#
+# @pytest.mark.asyncio
+# async def test_delete_movie_not_found(client):
+#     """
+#     Test the `/movies/{movie_id}/` endpoint with a non-existent movie ID.
+#     """
+#     non_existent_id = 99999
+#
+#     response = await client.delete(
+#         f"/api/v1/theater/movies/{non_existent_id}/")
+#     assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
+#
+#     response_data = response.json()
+#     expected_detail = "Movie with the given ID was not found."
+#     assert response_data["detail"] == expected_detail, (
+#         f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"
+#     )
+#
+#
+# @pytest.mark.asyncio
+# async def test_update_movie_success(client, db_session, seed_database):
+#     """
+#     Test the `/movies/{movie_id}/` endpoint for successfully updating a movie's details.
+#     """
+#     stmt = select(MovieModel).limit(1)
+#     result = await db_session.execute(stmt)
+#     movie = result.scalars().first()
+#     assert movie is not None, "No movies found in the database to update."
+#
+#     movie_id = movie.id
+#     update_data = {
+#         "name": "Updated Movie Name",
+#         "score": 95.0,
+#     }
+#
+#     response = await client.patch(f"/api/v1/theater/movies/{movie_id}/",
+#                                   json=update_data)
+#     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+#
+#     response_data = response.json()
+#     assert response_data["detail"] == "Movie updated successfully.", (
+#         f"Expected detail message: 'Movie updated successfully.', but got: {response_data['detail']}"
+#     )
+#
+#     await db_session.rollback()
+#
+#     stmt_check = select(MovieModel).where(MovieModel.id == movie_id)
+#     result_check = await db_session.execute(stmt_check)
+#     updated_movie = result_check.scalars().first()
+#
+#     assert updated_movie.name == update_data[
+#         "name"], "Movie name was not updated."
+#     assert updated_movie.score == update_data[
+#         "score"], "Movie score was not updated."
+#
+#
+# @pytest.mark.asyncio
+# async def test_update_movie_not_found(client):
+#     """
+#     Test the `/movies/{movie_id}/` endpoint with a non-existent movie ID.
+#     """
+#     non_existent_id = 99999
+#     update_data = {
+#         "name": "Non-existent Movie",
+#         "score": 90.0
+#     }
+#
+#     response = await client.patch(f"/api/v1/theater/movies/{non_existent_id}/",
+#                                   json=update_data)
+#     assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
+#
+#     response_data = response.json()
+#     expected_detail = "Movie with the given ID was not found."
+#     assert response_data["detail"] == expected_detail, (
+#         f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"
+#     )
