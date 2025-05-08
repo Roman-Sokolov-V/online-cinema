@@ -68,11 +68,17 @@ movie_detail_schema_example = {
 }
 
 movie_update_schema_example = {
-    "name": "Update Movie",
-    "date": "2025-01-01",
-    "score": 85.5,
-    "overview": "An amazing movie.",
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
+    "name": "New Movie",
+    "year": 2023,
+    "time": 102,
+    "imdb": 8.5,
+    "votes": 890,
+    "meta_score": 45.3,
+    "gross": 1000000.00,
+    "description": "An amazing movie.",
+    "price": 9.99,
+    "certification_name": "pg-13",
+    "genres": ["action", "adventure"],
+    "stars": ["Rutger Hauer", "Jeff Cohen"],
+    "directors": ["Steven Spielberg", "Peter Weir"]
 }

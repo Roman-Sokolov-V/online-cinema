@@ -11,6 +11,7 @@ from database import (
     DirectorModel,
 
 )
+from routes.permissions import is_moderator_or_admin
 
 
 @pytest.mark.asyncio
@@ -846,7 +847,7 @@ async def test_permissions_to_create_movie(client, db_session, create_activate_l
 
 ###########################################################################
 @pytest.mark.asyncio
-async def test_delete_movie_by_all_user_groups(client, db_session, seed_database, create_activate_login_user):
+async def test_permissions_delete_movie_by_all_user_groups(client, db_session, seed_database, create_activate_login_user):
     """
     Test that trying to delete a movie by users from  group: user, moderator, admin.
     User from user-group do not permissions to delete movie
@@ -950,60 +951,124 @@ async def test_delete_movie_not_found(client, create_activate_login_user):
     )
 
 
-# @pytest.mark.asyncio
-# async def test_update_movie_success(client, db_session, seed_database):
-#     """
-#     Test the `/movies/{movie_id}/` endpoint for successfully updating a movie's details.
-#     """
-#     stmt = select(MovieModel).limit(1)
-#     result = await db_session.execute(stmt)
-#     movie = result.scalars().first()
-#     assert movie is not None, "No movies found in the database to update."
-#
-#     movie_id = movie.id
-#     update_data = {
-#         "name": "Updated Movie Name",
-#         "score": 95.0,
-#     }
-#
-#     response = await client.patch(f"/api/v1/theater/movies/{movie_id}/",
-#                                   json=update_data)
-#     assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
-#
-#     response_data = response.json()
-#     assert response_data["detail"] == "Movie updated successfully.", (
-#         f"Expected detail message: 'Movie updated successfully.', but got: {response_data['detail']}"
-#     )
-#
-#     await db_session.rollback()
-#
-#     stmt_check = select(MovieModel).where(MovieModel.id == movie_id)
-#     result_check = await db_session.execute(stmt_check)
-#     updated_movie = result_check.scalars().first()
-#
-#     assert updated_movie.name == update_data[
-#         "name"], "Movie name was not updated."
-#     assert updated_movie.score == update_data[
-#         "score"], "Movie score was not updated."
-#
-#
-# @pytest.mark.asyncio
-# async def test_update_movie_not_found(client):
-#     """
-#     Test the `/movies/{movie_id}/` endpoint with a non-existent movie ID.
-#     """
-#     non_existent_id = 99999
-#     update_data = {
-#         "name": "Non-existent Movie",
-#         "score": 90.0
-#     }
-#
-#     response = await client.patch(f"/api/v1/theater/movies/{non_existent_id}/",
-#                                   json=update_data)
-#     assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
-#
-#     response_data = response.json()
-#     expected_detail = "Movie with the given ID was not found."
-#     assert response_data["detail"] == expected_detail, (
-#         f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"
-#     )
+@pytest.mark.asyncio
+async def test_permissions_update_movie_by_all_user_groups(client, db_session, seed_database, create_activate_login_user):
+    """
+    Test that trying to delete a movie by users from  group: user, moderator, admin.
+    User from user-group do not permissions to delete movie
+    """
+    user_data = await create_activate_login_user(
+        group_name="user")
+    user_access_token = user_data["access_token"]
+    user_headers = {"Authorization": f"Bearer {user_access_token}"}
+
+    moderator_data = await create_activate_login_user(
+        group_name="moderator")
+    moderator_access_token = moderator_data["access_token"]
+    moderator_headers = {"Authorization": f"Bearer {moderator_access_token}"}
+
+    admin_data = await create_activate_login_user(
+        group_name="admin")
+    admin_access_token = admin_data["access_token"]
+    admin_headers = {
+        "Authorization": f"Bearer {admin_access_token}"}
+
+    stmt = select(MovieModel).limit(3)
+    result = await db_session.execute(stmt)
+    movies = result.scalars().all()
+    assert len(movies) == 3, "No 3 movies found in the database to delete."
+    first_movie_id = movies[0].id
+    second_movie_id = movies[1].id
+    third_movie_id = movies[2].id
+
+    movie_data = {}
+
+    response = await client.patch(
+        f"/api/v1/theater/movies/{first_movie_id}/", json=movie_data, headers=user_headers
+    )
+    assert response.status_code == 403, f"Expected status code 403, but got {response.status_code}"
+    response = await client.patch(
+        f"/api/v1/theater/movies/{second_movie_id}/", json=movie_data, headers=moderator_headers
+    )
+    assert response.status_code == 200, f"Expected status code 204, but got {response.status_code}"
+    response = await client.patch(
+        f"/api/v1/theater/movies/{third_movie_id}/", json=movie_data, headers=admin_headers
+    )
+    assert response.status_code == 200, f"Expected status code 204, but got {response.status_code}"
+
+###########################################################################################
+@pytest.mark.asyncio
+async def test_dependency_is_moderator_or_admin(client, db_session, seed_database, create_activate_login_user):
+    moderator_data = await create_activate_login_user(group_name="moderator")
+    moderator_access_token = moderator_data["access_token"]
+    moderator_header = {"Authorization": f"Bearer {moderator_access_token}"}
+
+    admin_data = await create_activate_login_user(group_name="admin")
+    admin_access_token = moderator_data["access_token"]
+    admin_header = {"Authorization": f"Bearer {admin_access_token}"}
+
+    user_data = await create_activate_login_user(group_name="user")
+    user_access_token = moderator_data["access_token"]
+    user_header = {"Authorization": f"Bearer {user_access_token}"}
+    is_moderator_or_admin(moderator_header)
+
+
+
+@pytest.mark.asyncio
+async def test_update_movie_success(auth_client, db_session, seed_database):
+    """
+    Test the `/movies/{movie_id}/` endpoint for successfully updating a movie's details.
+    """
+
+    stmt = select(MovieModel).limit(1)
+    result = await db_session.execute(stmt)
+    movie = result.scalars().first()
+    assert movie is not None, "No movies found in the database to update."
+
+    movie_id = movie.id
+    update_data = {
+        "name": "Updated Movie Name",
+        "meta_score": 5.0,
+    }
+
+    response = await auth_client.patch(f"/api/v1/theater/movies/{movie_id}/",
+                                  json=update_data)
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+
+    response_data = response.json()
+    assert response_data["detail"] == "Movie updated successfully.", (
+        f"Expected detail message: 'Movie updated successfully.', but got: {response_data['detail']}"
+    )
+
+    await db_session.rollback()
+
+    stmt_check = select(MovieModel).where(MovieModel.id == movie_id)
+    result_check = await db_session.execute(stmt_check)
+    updated_movie = result_check.scalars().first()
+
+    assert updated_movie.name == update_data[
+        "name"], "Movie name was not updated."
+    assert updated_movie.meta_score == update_data[
+        "meta_score"], "Movie score was not updated."
+
+
+@pytest.mark.asyncio
+async def test_update_movie_not_found(auth_client):
+    """
+    Test the `/movies/{movie_id}/` endpoint with a non-existent movie ID.
+    """
+    non_existent_id = 99999
+    update_data = {
+        "name": "Non-existent Movie",
+        "meta_score": 9.0
+    }
+
+    response = await auth_client.patch(
+        f"/api/v1/theater/movies/{non_existent_id}/", json=update_data)
+    assert response.status_code == 404, f"Expected status code 404, but got {response.status_code}"
+
+    response_data = response.json()
+    expected_detail = "Movie with the given ID was not found."
+    assert response_data["detail"] == expected_detail, (
+        f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"
+    )

@@ -5,22 +5,20 @@ from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
-from sqlalchemy.sql import or_, and_
 
-from database import get_db, MovieModel, StarModel, DirectorModel, \
-    CertificationModel
 from database import (
-    GenreModel,
-
+    get_db, MovieModel, StarModel, DirectorModel, CertificationModel
 )
+from database import GenreModel
 from routes.filters import apply_m2m_filter
 from routes.permissions import is_moderator_or_admin
 from schemas import (
     MovieListResponseSchema,
-    #MovieListItemSchema,
-    MovieDetailSchema
+    MovieDetailSchema,
+    MovieUpdateSchema,
+    MovieCreateSchema
 )
-from schemas.movies import MovieCreateSchema  #, MovieUpdateSchema
+
 
 router = APIRouter()
 
@@ -508,75 +506,76 @@ async def delete_movie(
 
     return {"detail": "Movie deleted successfully."}
 
-#
-# @router.patch(
-#     "/movies/{movie_id}/",
-#     summary="Update a movie by ID",
-#     description=(
-#             "<h3>Update details of a specific movie by its unique ID.</h3>"
-#             "<p>This endpoint updates the details of an existing movie. If the movie with "
-#             "the given ID does not exist, a 404 error is returned.</p>"
-#     ),
-#     responses={
-#         200: {
-#             "description": "Movie updated successfully.",
-#             "content": {
-#                 "application/json": {
-#                     "example": {"detail": "Movie updated successfully."}
-#                 }
-#             },
-#         },
-#         404: {
-#             "description": "Movie not found.",
-#             "content": {
-#                 "application/json": {
-#                     "example": {"detail": "Movie with the given ID was not found."}
-#                 }
-#             },
-#         },
-#     }
-# )
-# async def update_movie(
-#         movie_id: int,
-#         movie_data: MovieUpdateSchema,
-#         db: AsyncSession = Depends(get_db),
-# ):
-#     """
-#     Update a specific movie by its ID.
-#
-#     This function updates a movie identified by its unique ID.
-#     If the movie does not exist, a 404 error is raised.
-#
-#     :param movie_id: The unique identifier of the movie to update.
-#     :type movie_id: int
-#     :param movie_data: The updated data for the movie.
-#     :type movie_data: MovieUpdateSchema
-#     :param db: The SQLAlchemy database session (provided via dependency injection).
-#     :type db: AsyncSession
-#
-#     :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-#
-#     :return: A response indicating the successful update of the movie.
-#     :rtype: None
-#     """
-#     stmt = select(MovieModel).where(MovieModel.id == movie_id)
-#     result = await db.execute(stmt)
-#     movie = result.scalars().first()
-#
-#     if not movie:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="Movie with the given ID was not found."
-#         )
-#
-#     for field, value in movie_data.model_dump(exclude_unset=True).items():
-#         setattr(movie, field, value)
-#
-#     try:
-#         await db.commit()
-#         await db.refresh(movie)
-#     except IntegrityError:
-#         await db.rollback()
-#         raise HTTPException(status_code=400, detail="Invalid input data.")
-#
-#     return {"detail": "Movie updated successfully."}
+
+@router.patch(
+    "/movies/{movie_id}/",
+    dependencies=[Depends(is_moderator_or_admin)],
+    summary="Update a movie by ID",
+    description=(
+            "<h3>Update details of a specific movie by its unique ID.</h3>"
+            "<p>This endpoint updates the details of an existing movie. If the movie with "
+            "the given ID does not exist, a 404 error is returned.</p>"
+    ),
+    responses={
+        200: {
+            "description": "Movie updated successfully.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie updated successfully."}
+                }
+            },
+        },
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Movie with the given ID was not found."}
+                }
+            },
+        },
+    }
+)
+async def update_movie(
+        movie_id: int,
+        movie_data: MovieUpdateSchema,
+        db: AsyncSession = Depends(get_db),
+):
+    """
+    Update a specific movie by its ID.
+
+    This function updates a movie identified by its unique ID.
+    If the movie does not exist, a 404 error is raised.
+
+    :param movie_id: The unique identifier of the movie to update.
+    :type movie_id: int
+    :param movie_data: The updated data for the movie.
+    :type movie_data: MovieUpdateSchema
+    :param db: The SQLAlchemy database session (provided via dependency injection).
+    :type db: AsyncSession
+
+    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
+
+    :return: A response indicating the successful update of the movie.
+    :rtype: None
+    """
+    stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    result = await db.execute(stmt)
+    movie = result.scalars().first()
+
+    if not movie:
+        raise HTTPException(
+            status_code=404,
+            detail="Movie with the given ID was not found."
+        )
+
+    for field, value in movie_data.model_dump(exclude_unset=True).items():
+        setattr(movie, field, value)
+
+    try:
+        await db.commit()
+        await db.refresh(movie)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Invalid input data.")
+
+    return {"detail": "Movie updated successfully."}

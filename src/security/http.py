@@ -35,7 +35,6 @@ def get_auth_token(authorization: str = Header(...)) -> str:
     """
     return check_token(authorization)
 
-
 def get_optional_auth_token(
         authorization: Optional[str] = Header(default=None)) -> None:
     """

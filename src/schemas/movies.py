@@ -161,20 +161,26 @@ class MovieCreateSchema(BaseModel):
     # def normalize_list_fields(cls, value: List[str]) -> List[str]:
     #     return [item.title() for item in value]
 
-# class MovieUpdateSchema(BaseModel):
-#     name: Optional[str] = None
-#     date: Optional[date] = None
-#     score: Optional[float] = Field(None, ge=0, le=100)
-#     overview: Optional[str] = None
-#     status: Optional[MovieStatusEnum] = None
-#     budget: Optional[float] = Field(None, ge=0)
-#     revenue: Optional[float] = Field(None, ge=0)
-#
-#     model_config = {
-#         "from_attributes": True,
-#         "json_schema_extra": {
-#             "examples": [
-#                 movie_update_schema_example
-#             ]
-#         }
-#     }
+class MovieUpdateSchema(BaseModel):
+    name: Optional[str] = None
+    year: Optional[int] = Field(None, ge=1888, le=date.today().year)
+    time: Optional[int] = None
+    imdb: Optional[float] = Field(None, ge=1.0, le=10.0)
+    votes: Optional[int] = Field(None, ge=1)
+    meta_score: Optional[float] = Field(None, ge=0.0)
+    gross: Optional[float] = Field(None, ge=0.0)
+    description: Optional[str] = None
+    price: Optional[Decimal] = Field(None, ge=0, le=Decimal("99999999.99"))
+    certification_name: Optional[str] = None
+    genres: Optional[List[str]] = None
+    stars: Optional[List[str]] = None
+    directors: Optional[List[str]] = None
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                movie_update_schema_example
+            ]
+        }
+    }
