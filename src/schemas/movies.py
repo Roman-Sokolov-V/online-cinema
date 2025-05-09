@@ -14,8 +14,24 @@ from schemas.examples.movies import (
     movie_create_schema_example,
     movie_detail_schema_example,
     movie_update_schema_example,
-    director_schema_example
+    director_schema_example,
+    genre_create_schema_example,
+    genre_list_schema_example, star_create_schema_example,
+    star_list_schema_example
 )
+
+
+class GenreCreateSchema(BaseModel):
+    name: str
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                genre_create_schema_example
+            ]
+        }
+    }
 
 
 class GenreSchema(BaseModel):
@@ -32,7 +48,31 @@ class GenreSchema(BaseModel):
     }
 
 
-class StarsSchema(BaseModel):
+class GenreListSchema(BaseModel):
+    genres: List[GenreSchema]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                genre_list_schema_example
+            ]
+        }
+    }
+
+
+class StarCreateSchema(BaseModel):
+    name: str
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                star_create_schema_example
+            ]
+        }
+    }
+
+
+class StarSchema(BaseModel):
     id: int
     name: str
 
@@ -41,6 +81,18 @@ class StarsSchema(BaseModel):
         "json_schema_extra": {
             "examples": [
                 star_schema_example
+            ]
+        }
+    }
+
+
+class StarListSchema(BaseModel):
+    stars: List[StarSchema]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                star_list_schema_example
             ]
         }
     }
@@ -81,7 +133,7 @@ class MovieBaseSchema(BaseModel):
 class MovieDetailSchema(MovieBaseSchema):
     id: int
     genres: List[GenreSchema]
-    stars: List[StarsSchema]
+    stars: List[StarSchema]
     directors: List[DirectorSchema]
 
     model_config = {
@@ -97,7 +149,7 @@ class MovieDetailSchema(MovieBaseSchema):
 class MovieListItemSchema(MovieBaseSchema):
     id: int
     genres: List[GenreSchema]
-    stars: List[StarsSchema]
+    stars: List[StarSchema]
     directors: List[DirectorSchema]
 
     model_config = {
@@ -160,6 +212,7 @@ class MovieCreateSchema(BaseModel):
     # @classmethod
     # def normalize_list_fields(cls, value: List[str]) -> List[str]:
     #     return [item.title() for item in value]
+
 
 class MovieUpdateSchema(BaseModel):
     name: Optional[str] = None

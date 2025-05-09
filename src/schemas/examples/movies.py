@@ -1,11 +1,27 @@
+genre_create_schema_example = {
+    "name": "Comedy"
+}
+
 genre_schema_example = {
     "id": 1,
-    "genre": "Comedy"
+    "name": "Comedy"
+}
+
+genre_list_schema_example = {
+    "genres": genre_schema_example,
+}
+
+star_create_schema_example = {
+    "name": "Jimmy Fallon"
 }
 
 star_schema_example = {
     "id": 1,
     "name": "Jimmy Fallon"
+}
+
+star_list_schema_example = {
+    "genres": star_schema_example,
 }
 
 director_schema_example = {

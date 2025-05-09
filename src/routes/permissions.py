@@ -51,7 +51,7 @@ def is_owner_or_admin(
     if payload["user_id"] != user_id and payload["group"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must be owner or admin to update profile"
+            detail="Access denied, not enough permissions"
         )
 
 
