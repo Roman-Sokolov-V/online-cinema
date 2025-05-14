@@ -26,6 +26,7 @@ from .associations import FavoriteModel
 
 
 from database.validators import accounts as validators
+from database.models.opinions import CommentModel
 from security.passwords import hash_password, verify_password
 from security.utils import generate_secure_token
 
@@ -101,6 +102,12 @@ class UserModel(Base):
         "UserProfileModel",
         back_populates="user",
         cascade="all, delete-orphan"
+    )
+    comments: Mapped[List["CommentModel"]] = relationship(
+        "CommentModel",
+        backref="user",
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
 
 

@@ -12,7 +12,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from database import Base
-from .associations import FavoriteModel
+from database.models.associations import FavoriteModel
+from database.models.opinions import CommentModel
 
 
 MoviesGenresModel = Table(
@@ -67,11 +68,6 @@ class GenreModel(Base):
         secondary=MoviesGenresModel,
         back_populates="genres"
     )
-
-    @property
-    def number_movies(self) -> int:
-        self.movies.count()
-        return len(self.movies)
 
     def __repr__(self):
         return f"<Genre(name='{self.name}')>"
@@ -140,8 +136,7 @@ class MovieModel(Base):
     )
     certification: Mapped[CertificationModel] = relationship(
         back_populates="movies",
-        passive_deletes=True
-    )
+        passive_deletes=True    )
     genres: Mapped[list[GenreModel]] = relationship(
         "GenreModel",
         secondary=MoviesGenresModel,
@@ -154,6 +149,12 @@ class MovieModel(Base):
     directors: Mapped[list[DirectorModel]] = relationship(
         secondary=MoviesDirectorsModel,
         back_populates="movies"
+    )
+    comments: Mapped[list[CommentModel]] = relationship(
+        CommentModel,
+        backref="movie",
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
 
 
