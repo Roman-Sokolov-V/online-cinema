@@ -1,4 +1,4 @@
-from sqlalchemy import Text, ForeignKey
+from sqlalchemy import Text, ForeignKey, UniqueConstraint
 
 from sqlalchemy.orm import mapped_column, Mapped, relationship, backref
 
@@ -7,10 +7,16 @@ from database import Base
 
 class CommentModel(Base):
     __tablename__ = "comments"
+    __table_args__ = (
+        UniqueConstraint(
+            "movie_id", "user_id",
+            name="uq_one_comment_per_movie_per_user"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id", ondelete="CASCADE"), nullable=False)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
     replies: Mapped[list["CommentModel"]] = relationship(
