@@ -1,10 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db, GenreModel
+from database import get_db, GenreModel, MoviesGenresModel, MovieModel
 from routes.permissions import is_moderator_or_admin
-from schemas import GenreCreateSchema, GenreSchema, GenreListSchema
+from schemas import (
+    GenreCreateSchema,
+    GenreSchema,
+    GenreListSchema,
+    GenreExtendSchema,
+    MovieBaseSchema,
+    MoviesRelatedGenresSchema
+)
+
 
 router = APIRouter()
 
@@ -72,10 +81,23 @@ async def create_genre(
 async def get_genres(
         db: AsyncSession = Depends(get_db)
 ) -> GenreListSchema:
-    stmt = select(GenreModel)
+    stmt = (
+        select(
+            GenreModel.id,
+            GenreModel.name,
+            func.count(MovieModel.id).label("number_of_movies"))
+        .outerjoin(
+            MoviesGenresModel, GenreModel.id == MoviesGenresModel.c.genre_id
+        )
+        .outerjoin(
+            MovieModel, MoviesGenresModel.c.movie_id == MovieModel.id
+        )
+        .group_by(GenreModel.id)
+    )
     result = await db.execute(stmt)
-    genres = result.scalars().all()
-    genres_list = [GenreSchema.model_validate(genre) for genre in genres]
+    rows = result.fetchall()
+    genres_list = [GenreExtendSchema.model_validate(row) for row in rows]
+
     return GenreListSchema(genres=genres_list)
 
 
@@ -198,3 +220,38 @@ async def update_genre(
     await db.refresh(genre)
 
     return GenreSchema.model_validate(genre)
+
+
+@router.get(
+    "/genres/{genre_id}/",
+    response_model=MoviesRelatedGenresSchema,
+    summary="Retrieve all related with genre movie",
+    description=(
+            "<h3>Retrieve all related with genre movie by genre unique ID.</h3>"
+    ),
+    responses={
+        404: {
+            "description": "Genre not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Genre with the given ID was not found."}
+                }
+            }
+        },
+    },
+    status_code=200
+)
+async def get_related_movies(
+        genre_id: int,
+        db: AsyncSession = Depends(get_db)
+):
+    stmt = select(GenreModel).where(GenreModel.id == genre_id).options(joinedload(GenreModel.movies))
+    result = await db.execute(stmt)
+    genre = result.scalars().first()
+    if not genre:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Genre with the given ID was not found."
+        )
+    movies_list = [MovieBaseSchema.model_validate(movie) for movie in genre.movies]
+    return MoviesRelatedGenresSchema(movies=movies_list)
