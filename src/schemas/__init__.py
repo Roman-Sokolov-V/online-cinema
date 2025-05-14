@@ -31,3 +31,10 @@ from schemas.accounts import (
     ChangeGroupRequestSchema
 )
 from schemas.tokens import AccessTokenPayload
+
+from schemas.opinions import (
+    CommentSchema,
+    ResponseCommentarySchema,
+    ReplySchema,
+    ResponseReplySchema
+)

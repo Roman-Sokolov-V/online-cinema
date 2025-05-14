@@ -80,8 +80,6 @@ movie_create_schema_example = {
     "directors": ["Steven Spielberg", "Peter Weir"]
 }
 
-
-
 movie_detail_schema_example = {
     **movie_item_schema_example,
     "stars": [star_schema_example],
