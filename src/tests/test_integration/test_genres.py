@@ -1,13 +1,13 @@
-import random
-from http import HTTPStatus
-import pytest
-from sqlalchemy import select, func
-from sqlalchemy.orm import joinedload, selectinload
+from random import choice
 
-from database import MovieModel, CertificationModel
-from database import GenreModel
-from routes.permissions import is_moderator_or_admin
+import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from database import GenreModel, MovieModel
+
 from sqlalchemy import insert
+
+from schemas import MovieBaseSchema
 
 Base_URL = "/api/v1/theater/genres/"
 
@@ -178,13 +178,38 @@ async def test_update_not_exist_genre(auth_client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_list_genre_success(client, db_session, create_genre):
-    genres = create_genre
+async def test_list_genre_success(client, db_session, seed_database):
+    stmt = select(GenreModel).options(selectinload(GenreModel.movies))
+    result = await db_session.execute(stmt)
+    genres = result.scalars().all()
     response = await client.get(Base_URL)
+
     assert response.status_code == 200, "Expected code 200"
     expected = sorted(
-        [{"id": genre.id, "name": genre.name} for genre in genres],
+        [{"id": genre.id, "name": genre.name, "number_of_movies": len(genre.movies)} for genre in genres],
         key=lambda x: x["id"]
     )
     actual = sorted(response.json()["genres"], key=lambda x: x["id"])
     assert expected == actual
+
+@pytest.mark.asyncio
+async def test_get_related_movies(client, db_session, seed_database):
+    stmt = select(GenreModel).options(selectinload(GenreModel.movies))
+    result = await db_session.execute(stmt)
+    genres = result.scalars().all()
+    genre = choice(genres)
+    related_movies_stmt = select(MovieModel).where(MovieModel.genres.any(id=genre.id))
+    result = await db_session.execute(related_movies_stmt)
+    related_movies = result.scalars().all()
+    expected = [MovieBaseSchema.model_validate(movie).model_dump(mode="json") for movie in related_movies]
+
+    response = await client.get(Base_URL + f"{genre.id}/")
+    assert response.status_code == 200, "Expected code 200"
+    assert response.json()["movies"] == expected
+
+@pytest.mark.asyncio
+async def test_get_related_movies_with_not_exist_genre(client, db_session):
+
+    response = await client.get(Base_URL + "1/")
+    assert response.status_code == 404, "Expected code 404"
+
