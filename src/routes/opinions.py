@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from database import (
-    get_db, MovieModel, UserModel
+    get_db, MovieModel, UserModel, CommentModel
 )
 
 from routes.filters import apply_m2m_filter
@@ -18,7 +18,8 @@ from schemas import (
     MovieDetailSchema,
     AccessTokenPayload,
     ResponseMessageSchema,
-    FavoriteListSchema
+    FavoriteListSchema, CommentSchema, ResponseCommentarySchema, ReplySchema,
+    ResponseReplySchema
 )
 
 router = APIRouter()
@@ -349,3 +350,167 @@ async def get_favorites(
         total_items=total_filtered_items,
     )
     return response
+
+
+@router.post(
+    "/movies/comment/{movie_id}/",
+    response_model=ResponseCommentarySchema,
+    summary="Add commentary",
+    description="<h3>Add commentary to movie.</h3>",
+    responses={
+        201: {
+            "description": "Comment successfully added to the movie.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "content": "Nice movie!",
+                        "user_id": 5,
+                        "movie_id": 10,
+                    }
+                }
+            },
+        },
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie with the given ID was not found."}
+                }
+            },
+        },
+        400: {
+            "description": "Movie is already commented.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "You already commented this movie"}
+                }
+            },
+        },
+
+    },
+    status_code=201
+)
+async def add_comment_to_movie(
+    movie_id: int,
+    comment_data: CommentSchema,
+    token_payload: AccessTokenPayload = Depends(get_required_access_token_payload),
+    db: AsyncSession=Depends(get_db),
+
+) -> ResponseCommentarySchema:
+    user_id = token_payload["user_id"]
+    movie = await db.get(MovieModel, movie_id)
+
+    if movie is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found."
+        )
+    stmt = select(CommentModel.id).where(
+        (CommentModel.user_id == user_id) &
+        (CommentModel.movie_id == movie_id)
+    )
+    result = await db.execute(stmt)
+    exists_comment = result.scalars().first()
+    if exists_comment:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already commented this movie"
+        )
+
+    comment = CommentModel(
+        content=comment_data.content,
+        user_id=user_id,
+        movie_id=movie_id
+    )
+    db.add(comment)
+    await db.commit()
+    await db.refresh(comment)
+    return ResponseCommentarySchema.model_validate(
+        comment, from_attributes=True
+    )
+
+
+
+@router.post(
+    "/movies/comment/reply/{comment_id}/",
+    response_model=ResponseReplySchema,
+    summary="Add commentary",
+    description="<h3>Add commentary to movie.</h3>",
+    responses={
+        201: {
+            "description": "Reply successfully added to the movie.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 100,
+                        "content": "I totally agree!",
+                        "user_id": 5,
+                        "movie_id": 10,
+                        "parent_id": 85
+                    }
+                }
+            },
+        },
+        400: {
+            "description": "You can't reply your commentary.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "You can't reply your commentary."}
+                }
+            },
+        },
+        404: {
+            "description": "Commentary not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Commentary with the given ID was not found."}
+                }
+            },
+        },
+
+
+    },
+    status_code=201
+)
+async def add_reply_to_comment(
+    comment_id: int,
+    reply_data: ReplySchema,
+    token_payload: AccessTokenPayload = Depends(get_required_access_token_payload),
+    db: AsyncSession=Depends(get_db)
+) -> ResponseCommentarySchema:
+    user_id = token_payload["user_id"]
+
+    movie_stmt = select(CommentModel.movie_id).where(CommentModel.id == comment_id)
+    result = await db.execute(movie_stmt)
+    movie_id = result.scalars().first()
+    if movie_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Commentary not found."
+        )
+    comment = await db.get(CommentModel, comment_id)
+    if comment.user_id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You can't reply your commentary."
+        )
+
+    reply = CommentModel(
+        content=reply_data.content,
+        user_id=user_id,
+        movie_id=movie_id,
+        parent_id=comment_id
+    )
+    print(f"{reply=}")
+    db.add(reply)
+    await db.commit()
+    await db.refresh(reply)
+    print(f"{reply=}")
+    return ResponseReplySchema.model_validate(
+        reply, from_attributes=True
+    )
