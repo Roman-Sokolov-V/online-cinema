@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from database import Base
+from .associations import FavoriteModel
 
 
 MoviesGenresModel = Table(
@@ -67,6 +68,11 @@ class GenreModel(Base):
         back_populates="genres"
     )
 
+    @property
+    def number_movies(self) -> int:
+        self.movies.count()
+        return len(self.movies)
+
     def __repr__(self):
         return f"<Genre(name='{self.name}')>"
 
@@ -109,6 +115,11 @@ class MovieModel(Base):
     __tablename__ = "movies"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    users_like: Mapped[list["UserModel"]] = relationship(
+        "UserModel",
+        secondary=FavoriteModel,
+        back_populates="favorite_movies"
+    )
     uuid: Mapped[Uuid] = mapped_column(
         UUID(as_uuid=True),
         default=uuid.uuid4,
@@ -145,6 +156,7 @@ class MovieModel(Base):
         back_populates="movies"
     )
 
+
     __table_args__ = (
         UniqueConstraint(
             "name", "year", "time", name="unique_movie_constraint"
@@ -161,3 +173,24 @@ class MovieModel(Base):
             f" release_date='{self.year}',"
             f" score={self.meta_score})>"
         )
+
+# class OpinionModel(Base):
+#     __tablename__ = "opinions"
+#
+#     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+#     comment: Mapped[str] = mapped_column(Text, nullable=True)
+#     rating: Mapped[int] = mapped_column(Integer, nullable=True, min_value=1, max_value=10)
+#     movie_id: Mapped[int]
+#     user_id: Mapped[int]
+#
+#
+#
+# class AnsverCommentsModel(Base):
+#     __tablename__ = "comments"
+#
+#     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+#     comment: Mapped[str] = mapped_column(Text, nullable=True)
+#     opinion_id
+#     user_id
+
+

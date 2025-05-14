@@ -7,6 +7,7 @@ from routes import (
     profiles_router,
     genres_router,
     actors_router,
+    favorites_router,
 )
 
 app = FastAPI(
@@ -34,3 +35,4 @@ app.include_router(profiles_router, prefix=f"{api_version_prefix}/profiles", tag
 app.include_router(movie_router, prefix=f"{api_version_prefix}/theater", tags=["theater"])
 app.include_router(genres_router, prefix=f"{api_version_prefix}/theater", tags=["genres"])
 app.include_router(actors_router, prefix=f"{api_version_prefix}/theater", tags=["actors"])
+app.include_router(favorites_router, prefix=f"{api_version_prefix}/opinions", tags=["favorites"])

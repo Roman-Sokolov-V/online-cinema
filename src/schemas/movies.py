@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -17,7 +17,7 @@ from schemas.examples.movies import (
     director_schema_example,
     genre_create_schema_example,
     genre_list_schema_example, star_create_schema_example,
-    star_list_schema_example
+    star_list_schema_example, genre_extend_schema_example
 )
 
 
@@ -48,8 +48,21 @@ class GenreSchema(BaseModel):
     }
 
 
+class GenreExtendSchema(GenreSchema):
+    number_of_movies: int
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                genre_extend_schema_example
+            ]
+        }
+    }
+
+
 class GenreListSchema(BaseModel):
-    genres: List[GenreSchema]
+    genres: List[GenreExtendSchema]
 
     model_config = {
         "json_schema_extra": {
@@ -237,3 +250,15 @@ class MovieUpdateSchema(BaseModel):
             ]
         }
     }
+
+
+class MoviesRelatedGenresSchema(BaseModel):
+    movies: List[MovieBaseSchema]
+
+
+class ResponseMessageSchema(BaseModel):
+    detail: str
+
+
+class FavoriteListSchema(BaseModel):
+    movies: List[MovieListItemSchema]

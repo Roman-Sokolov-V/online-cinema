@@ -265,7 +265,8 @@ class CSVDatabaseSeeder:
                 "gross": row["Gross"],
                 "description": row['Overview'],
                 "price": Decimal(f"{random.uniform(1, 100):.2f}"),
-                "certification_id": certification.id
+                "certification_id": certification.id,
+                "users_like": [],
             }
             movies_data.append(movie)
         return movies_data

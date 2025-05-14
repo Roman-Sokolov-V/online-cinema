@@ -1,12 +1,7 @@
-import random
-from http import HTTPStatus
 import pytest
-from sqlalchemy import select, func
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy import select
 
-from database import MovieModel, CertificationModel
 from database import StarModel
-from routes.permissions import is_moderator_or_admin
 from sqlalchemy import insert
 
 Base_URL = "/api/v1/theater/actors/"

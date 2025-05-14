@@ -22,9 +22,16 @@ from sqlalchemy.orm import (
 )
 
 from database import Base
+from .associations import FavoriteModel
+
+
 from database.validators import accounts as validators
 from security.passwords import hash_password, verify_password
 from security.utils import generate_secure_token
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from database import MovieModel
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -54,6 +61,11 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    favorite_movies: Mapped[List["MovieModel"]] = relationship(
+        "MovieModel",
+        secondary=FavoriteModel,
+        back_populates="users_like"
+    )
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     _hashed_password: Mapped[str] = mapped_column("hashed_password", String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -90,6 +102,7 @@ class UserModel(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+
 
     def __repr__(self):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"

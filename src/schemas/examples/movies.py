@@ -1,10 +1,16 @@
 genre_create_schema_example = {
-    "name": "Comedy"
+    "name": "comedy"
 }
 
 genre_schema_example = {
     "id": 1,
-    "name": "Comedy"
+    "name": "comedy"
+}
+
+genre_extend_schema_example = {
+    "id": 1,
+    "name": "comedy",
+    "number_of_movies": 98
 }
 
 genre_list_schema_example = {
