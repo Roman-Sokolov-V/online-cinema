@@ -18,11 +18,8 @@ FavoriteModel = Table(
     Column(
         "rate", Integer, nullable=True,
     ),
-    Column(
-        "comment", String, nullable=True,
-    ),
     UniqueConstraint(
         "movie_id", "user_id", name="idx_unique_user_movie"
     ),
-    CheckConstraint("rate BETWEEN 1 AND 10", name="idx_unique_user_movie")
+    CheckConstraint("rate BETWEEN 1 AND 10", name="check_rate_range")
 )
