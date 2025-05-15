@@ -178,7 +178,7 @@ async def remove_from_favorite(
 
 
 @router.get(
-    "/movies/favorite/{movie_id}/",
+    "/movies/favorite/",
     summary="Retrieve favorite movie by id.",
     response_model=FavoriteListSchema,
     description=(
@@ -490,8 +490,6 @@ async def add_comment_to_movie(
                 }
             },
         },
-
-
     },
     status_code=201
 )
@@ -556,3 +554,73 @@ async def add_reply_to_comment(
     return ResponseReplySchema.model_validate(
         reply, from_attributes=True
     )
+#
+# @router.post(
+#     "/movies/{movie_id}/rate",
+#     response_model=ResponseMessageSchema,
+#     summary="Rate movie",
+#     description="<h3>Rate movie by movie id.</h3>",
+#     responses={
+#         201: {
+#             "description": "Reply successfully added to the movie.",
+#             "content": {
+#                 "application/json": {
+#                     "example": {
+#                         "id": 100,
+#                         "content": "I totally agree!",
+#                         "user_id": 5,
+#                         "movie_id": 10,
+#                         "parent_id": 85
+#                     }
+#                 }
+#             },
+#         },
+#         400: {
+#             "description": "You can't reply your commentary.",
+#             "content": {
+#                 "application/json": {
+#                     "example": {
+#                         "detail": "You can't reply your commentary."}
+#                 }
+#             },
+#         },
+#         404: {
+#             "description": "Movie not found.",
+#             "content": {
+#                 "application/json": {
+#                     "example": {
+#                         "detail": "Movie not found."}
+#                 }
+#             },
+#         },
+#         422: {
+#             "description": "Validation Error",
+#             "content": {
+#                 "application/json": {
+#                     "example": {
+#                         "detail": [
+#                             {
+#                                 "loc": ["body", "content"],
+#                                 "msg": "Value error, At least one of content or is_like must be set",
+#                                 "type": "value_error"
+#                             }
+#                         ]
+#                     }
+#                 }
+#             },
+#         },
+#     }
+# )
+# async def rate_movie(
+#         movie_id: int,
+#         data: RateSchema,
+#         token_payload: AccessTokenPayload = Depends(get_required_access_token_payload),
+#         db: AsyncSession=Depends(get_db),
+# ) -> ResponseMessageSchema:
+#     movie = await db.get(MovieModel, movie_id)
+#     if not movie:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="Movie not found."
+#         )
+#     FavoriteModel
