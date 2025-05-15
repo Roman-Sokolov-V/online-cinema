@@ -6,9 +6,11 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from config import get_accounts_email_notificator
 from database import (
     get_db, MovieModel, UserModel, CommentModel
 )
+from notifications import EmailSenderInterface
 
 from routes.filters import apply_m2m_filter
 
@@ -472,6 +474,22 @@ async def add_comment_to_movie(
                 }
             },
         },
+        422: {
+            "description": "Validation Error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": [
+                            {
+                                "loc": ["body", "content"],
+                                "msg": "Value error, At least one of content or is_like must be set",
+                                "type": "value_error"
+                            }
+                        ]
+                    }
+                }
+            },
+        },
 
 
     },
@@ -481,36 +499,60 @@ async def add_reply_to_comment(
     comment_id: int,
     reply_data: ReplySchema,
     token_payload: AccessTokenPayload = Depends(get_required_access_token_payload),
-    db: AsyncSession=Depends(get_db)
+    db: AsyncSession=Depends(get_db),
+    email_sender: EmailSenderInterface = Depends(
+            get_accounts_email_notificator),
 ) -> ResponseCommentarySchema:
     user_id = token_payload["user_id"]
 
-    movie_stmt = select(CommentModel.movie_id).where(CommentModel.id == comment_id)
-    result = await db.execute(movie_stmt)
+    stmt = select(CommentModel.movie_id).where(CommentModel.id == comment_id)
+    result = await db.execute(stmt)
     movie_id = result.scalars().first()
     if movie_id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Commentary not found."
         )
+    stmt = select(MovieModel.name).where(MovieModel.id == movie_id)
+    result = await db.execute(stmt)
+    movie_title = result.scalars().first()
+
     comment = await db.get(CommentModel, comment_id)
     if comment.user_id == user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You can't reply your commentary."
         )
+    if comment.content is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You can't reply to commentary without content."
+        )
 
     reply = CommentModel(
         content=reply_data.content,
+        is_like=reply_data.is_like,
         user_id=user_id,
         movie_id=movie_id,
-        parent_id=comment_id
+        parent_id=comment_id,
     )
-    print(f"{reply=}")
+
     db.add(reply)
-    await db.commit()
+    await db.flush()
     await db.refresh(reply)
-    print(f"{reply=}")
+    await db.commit()
+    recipient_user = await db.get(UserModel, comment.user_id)
+
+    await email_sender.send_activity_notificator(
+        email=recipient_user.email,
+        comment_id=comment.id,
+        comment_content=comment.content,
+        reply_id=reply.id,
+        is_like=reply.is_like,
+        reply_content=reply.content,
+        movie_title=movie_title
+    )
+
     return ResponseReplySchema.model_validate(
         reply, from_attributes=True
     )

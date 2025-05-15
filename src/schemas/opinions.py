@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from typing import Optional, List
+
+from pydantic import BaseModel, model_validator
 
 from schemas.examples.opinions import (
     response_commentary_schema_example,
@@ -26,11 +28,23 @@ class ResponseCommentarySchema(BaseModel):
     }
 
 
-class ReplySchema(CommentSchema):
-    pass
+class ReplySchema(BaseModel):
+    content: Optional[str] = None
+    is_like: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def check_reaction_needed(self) -> "ReplySchema":
+        if self.content is None and self.is_like is None:
+            raise ValueError("At least one of content or is_like must be set")
+        return self
 
 
-class ResponseReplySchema(ResponseCommentarySchema):
+class ResponseReplySchema(BaseModel):
+    id: int
+    content: str | None
+    is_like: bool | None
+    movie_id: int
+    user_id: int
     parent_id: int
 
     model_config = {

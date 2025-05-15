@@ -16,8 +16,10 @@ from schemas.examples.movies import (
     movie_update_schema_example,
     director_schema_example,
     genre_create_schema_example,
-    genre_list_schema_example, star_create_schema_example,
-    star_list_schema_example, genre_extend_schema_example
+    genre_list_schema_example,
+    star_create_schema_example,
+    star_list_schema_example,
+    genre_extend_schema_example
 )
 
 
