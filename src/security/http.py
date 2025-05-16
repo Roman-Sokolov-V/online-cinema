@@ -1,4 +1,6 @@
-from fastapi import Request, HTTPException, status
+from typing import Optional
+
+from fastapi import Request, HTTPException, status, Header
 
 
 def check_token(authorization) -> str:
@@ -21,24 +23,43 @@ def check_token(authorization) -> str:
     return token
 
 
-def get_token(request: Request) -> str:
+def get_auth_token(authorization: str = Header(...)) -> str:
     """
     Extracts the Bearer token from the Authorization header.
 
-    :param request: FastAPI Request object.
+    :param authorization: authorization header value.
     :return: Extracted token string.
     :raises HTTPException:
             - 401 Unauthorized if the Authorization header is missing.
             - 401 Unauthorized if the header format is invalid.
     """
-    authorization: str = request.headers.get("Authorization")
+    return check_token(authorization)
 
+def get_optional_auth_token(
+        authorization: Optional[str] = Header(default=None)) -> None:
+    """
+    For swagger documentation only, for view not required authorization field
+    :param authorization: authorization header value.
+    """
+    pass
+
+
+def get_token(request: Request) -> str:
+    """
+    Extracts the Bearer token from request.
+
+    :param request: request value.
+    :return: Extracted token string.
+    :raises HTTPException:
+            - 401 Unauthorized if the Authorization header is missing.
+            - 401 Unauthorized if the header format is invalid.
+    """
+    authorization = request.headers.get("Authorization")
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authorization header is missing"
         )
-
     return check_token(authorization)
 
 

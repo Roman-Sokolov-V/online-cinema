@@ -1,9 +1,19 @@
 from schemas.movies import (
+    MovieBaseSchema,
     MovieDetailSchema,
     MovieListResponseSchema,
-    MovieListItemSchema,
     MovieCreateSchema,
-    MovieUpdateSchema
+    MovieUpdateSchema,
+    GenreCreateSchema,
+    GenreSchema,
+    GenreListSchema,
+    StarCreateSchema,
+    StarSchema,
+    StarListSchema,
+    ResponseMessageSchema,
+    FavoriteListSchema,
+    GenreExtendSchema,
+    MoviesRelatedGenresSchema,
 )
 from schemas.accounts import (
     UserRegistrationRequestSchema,
@@ -21,3 +31,10 @@ from schemas.accounts import (
     ChangeGroupRequestSchema
 )
 from schemas.tokens import AccessTokenPayload
+
+from schemas.opinions import (
+    CommentSchema,
+    ResponseCommentarySchema,
+    ReplySchema,
+    ResponseReplySchema
+)

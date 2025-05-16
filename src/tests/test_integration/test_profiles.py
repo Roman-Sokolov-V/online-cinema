@@ -99,9 +99,9 @@ async def test_create_user_profile_with_fake_s3(
         ),
     ],
 )
-async def test_create_user_profile_invalid_auth(client, headers,
-                                                expected_status,
-                                                expected_detail):
+async def test_create_user_profile_invalid_auth(
+        client, headers, expected_status, expected_detail
+):
     """
     Test profile creation with missing or incorrectly formatted Authorization header.
 

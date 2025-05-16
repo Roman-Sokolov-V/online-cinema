@@ -23,6 +23,7 @@ class EmailSender(EmailSenderInterface):
             activation_complete_email_template_name: str,
             password_email_template_name: str,
             password_complete_email_template_name: str,
+            activity_notification_template_name: str,
     ):
         self._hostname = hostname
         self._port = port
@@ -33,6 +34,7 @@ class EmailSender(EmailSenderInterface):
         self._activation_complete_email_template_name = activation_complete_email_template_name
         self._password_email_template_name = password_email_template_name
         self._password_complete_email_template_name = password_complete_email_template_name
+        self._activity_notification_template_name = activity_notification_template_name
 
         self._env = Environment(loader=FileSystemLoader(template_dir))
 
@@ -68,7 +70,6 @@ class EmailSender(EmailSenderInterface):
             logging.error(f"Failed to send email to {recipient}: {error}")
             raise BaseEmailError(
                 f"Failed to send email to {recipient}: {error}")
-
 
     async def send_activation_email(
             self, email: str, activation_link: str, activation_token: str
@@ -131,3 +132,46 @@ class EmailSender(EmailSenderInterface):
         html_content = template.render(email=email, login_link=login_link)
         subject = "Your Password Has Been Successfully Reset"
         await self._send_email(email, subject, html_content)
+
+    async def send_activity_notificator(
+            self,
+            email: str,
+            comment_id: int,
+            comment_content: str,
+            reply_id: int,
+            movie_title: str,
+            is_like: bool | None = None,
+            reply_content: str | None = None,
+
+    ) -> None:
+        """
+        Notify users when their comments receive replies or likes.
+         email asynchronously.
+
+        Args:
+            email (str): The recipient's email address.
+            comment_id(int): The id of the comment on which reply was given.
+            comment_content (str): The content of the comment on which reply was given.
+            reply_id(int): The id of the reply on which reply was given.
+            reply_content (str): The content of the reply on which reply was given.
+            is_like(bool): Whether the comment is like.
+            movie_title(str): title of the movie.
+        """
+        template = self._env.get_template(
+            self._activity_notification_template_name
+        )
+        html_content = template.render(
+            email=email,
+            comment_id=comment_id,
+            comment_content=comment_content,
+            reply_id=reply_id,
+            is_like=is_like,
+            reply_content=reply_content,
+            movie_title=movie_title
+        )
+        subject = "Somebody has replied or liked your commentary"
+        await self._send_email(
+            recipient=email,
+            subject=subject,
+            html_content=html_content,
+        )

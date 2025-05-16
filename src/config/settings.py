@@ -10,13 +10,14 @@ class BaseAppSettings(BaseSettings):
     HOSTING: str = "http://127.0.0.1:8000"
     BASE_DIR: Path = Path(__file__).parent.parent
     PATH_TO_DB: str = str(BASE_DIR / "database" / "source" / "theater.db")
-    PATH_TO_MOVIES_CSV: str = str(BASE_DIR / "database" / "seed_data" / "imdb_movies.csv")
+    PATH_TO_MOVIES_CSV: str = str(BASE_DIR / "database" / "seed_data" / "imdb_top_1000.csv")
 
     PATH_TO_EMAIL_TEMPLATES_DIR: str = str(BASE_DIR / "notifications" / "templates")
     ACTIVATION_EMAIL_TEMPLATE_NAME: str = "activation_request.html"
     ACTIVATION_COMPLETE_EMAIL_TEMPLATE_NAME: str = "activation_complete.html"
     PASSWORD_RESET_TEMPLATE_NAME: str = "password_reset_request.html"
     PASSWORD_RESET_COMPLETE_TEMPLATE_NAME: str = "password_reset_complete.html"
+    ACTIVITY_NOTIFICATION: str = "activity_notification.html"
 
     LOGIN_TIME_DAYS: int = 7
 
@@ -35,6 +36,10 @@ class BaseAppSettings(BaseSettings):
 
     CELERY_BROKER_URL: str = "redis://127.0.0.1:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://127.0.0.1:6379/0"
+
+    SUPER_USER_EMAIL: str = "admin@example.com"
+    SUPER_USER_PASSWORD: str = "Admin@11"
+
 
     @property
     def S3_STORAGE_ENDPOINT(self) -> str:
@@ -63,5 +68,5 @@ class TestingSettings(BaseAppSettings):
         object.__setattr__(
             self,
             'PATH_TO_MOVIES_CSV',
-            str(self.BASE_DIR / "database" / "seed_data" / "test_data.csv")
+            str(self.BASE_DIR / "database" / "seed_data" / "imdb_top_1000.csv")
         )

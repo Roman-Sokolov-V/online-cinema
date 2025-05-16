@@ -1,8 +1,8 @@
 """initial migration
 
-Revision ID: 32b1054a69e3
+Revision ID: b64a1bbd1d42
 Revises: 
-Create Date: 2025-01-06 17:05:45.296324
+Create Date: 2025-04-22 15:27:51.013303
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '32b1054a69e3'
+revision: str = 'b64a1bbd1d42'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -79,7 +79,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_table('activation_tokens',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('token', sa.String(length=255), nullable=False),
+    sa.Column('token', sa.String(length=64), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
@@ -110,7 +110,7 @@ def upgrade() -> None:
     )
     op.create_table('password_reset_tokens',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('token', sa.String(length=255), nullable=False),
+    sa.Column('token', sa.String(length=64), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
@@ -119,8 +119,8 @@ def upgrade() -> None:
     sa.UniqueConstraint('user_id')
     )
     op.create_table('refresh_tokens',
+    sa.Column('token', sa.String(length=512), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('token', sa.String(length=255), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),

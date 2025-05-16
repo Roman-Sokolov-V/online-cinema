@@ -17,6 +17,7 @@ from database import (
 )
 from database.populate import CSVDatabaseSeeder
 from main import app
+from routes.permissions import is_moderator_or_admin
 from security.interfaces import JWTAuthManagerInterface
 from security.token_manager import JWTAuthManager
 from storages import S3StorageClient
@@ -111,6 +112,40 @@ async def s3_client(settings):
 
 
 @pytest_asyncio.fixture(scope="function")
+async def override_is_moderator_or_admin():
+    """
+    Provide a fake is_moderator_or_admin dependency.
+
+    This fixture returns None to imitate successfully authentication
+    and authorisation.
+    """
+    return None
+
+############################################################################
+@pytest_asyncio.fixture(scope="function")
+async def auth_client(
+        email_sender_stub, s3_storage_fake, override_is_moderator_or_admin
+):
+    """
+    Provide an asynchronous HTTP client for testing.
+
+    Overrides the dependencies for email sender S3 storage with test doubles,
+    and successfully authentication and authorisation
+    """
+    app.dependency_overrides[
+        get_accounts_email_notificator] = lambda: email_sender_stub
+    app.dependency_overrides[get_s3_storage_client] = lambda: s3_storage_fake
+    app.dependency_overrides[
+        is_moderator_or_admin] = lambda: override_is_moderator_or_admin
+
+    async with AsyncClient(transport=ASGITransport(app=app),
+                           base_url="http://test") as async_client:
+        yield async_client
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture(scope="function")
 async def client(email_sender_stub, s3_storage_fake):
     """
     Provide an asynchronous HTTP client for testing.
@@ -195,9 +230,13 @@ async def seed_user_groups(db_session: AsyncSession):
     This fixture inserts all user groups defined in UserGroupEnum into the database and commits the transaction.
     It then yields the asynchronous database session for further testing.
     """
-    groups = [{"name": group.value} for group in UserGroupEnum]
-    await db_session.execute(insert(UserGroupModel).values(groups))
-    await db_session.commit()
+    stmt = select(UserGroupModel.id)
+    result = await db_session.execute(stmt)
+    exists_group = result.scalars().all()
+    if not exists_group:
+        groups = [{"name": group.value} for group in UserGroupEnum]
+        await db_session.execute(insert(UserGroupModel).values(groups))
+        await db_session.commit()
     yield db_session
 
 
@@ -273,7 +312,6 @@ async def create_activate_login_user(
     }
     """
 
-
     async def _login_user(group_name: str = "user", prefix: str = ""):
         registration_payload = {
             "email": f"{prefix}{group_name}@example.com",
@@ -315,6 +353,7 @@ async def create_activate_login_user(
             "refresh_token": refresh_token,
             "payload": registration_payload,
         }
+
     return _login_user
 
 
@@ -330,7 +369,8 @@ def jwt_manager() -> JWTAuthManagerInterface:
 
 @pytest_asyncio.fixture
 async def create_user_and_profile(
-        db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake, client
+        db_session, seed_user_groups, reset_db, jwt_manager, s3_storage_fake,
+        client
 ):
     """
     Positive test for updating a user profile.
@@ -341,7 +381,8 @@ async def create_user_and_profile(
     3. Create user profile using create_profile endpoint
     return: tuple(user: UserModel, headers: dict)
     """
-    user = UserModel.create(email="test@mate.com", raw_password="TestPassword123!", group_id=1)
+    user = UserModel.create(email="test@mate.com",
+                            raw_password="TestPassword123!", group_id=1)
     user.is_active = True
     db_session.add(user)
     await db_session.commit()

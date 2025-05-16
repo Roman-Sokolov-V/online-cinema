@@ -1,11 +1,57 @@
+genre_create_schema_example = {
+    "name": "comedy"
+}
+
+genre_schema_example = {
+    "id": 1,
+    "name": "comedy"
+}
+
+genre_extend_schema_example = {
+    "id": 1,
+    "name": "comedy",
+    "number_of_movies": 98
+}
+
+genre_list_schema_example = {
+    "genres": genre_schema_example,
+}
+
+star_create_schema_example = {
+    "name": "Jimmy Fallon"
+}
+
+star_schema_example = {
+    "id": 1,
+    "name": "Jimmy Fallon"
+}
+
+star_list_schema_example = {
+    "genres": star_schema_example,
+}
+
+director_schema_example = {
+    "id": 1,
+    "name": "Steven Spielberg"
+}
+
 movie_item_schema_example = {
     "id": 9933,
     "name": "The Swan Princess: A Royal Wedding",
-    "date": "2020-07-20",
-    "score": 70,
-    "overview": "Princess Odette and Prince Derek are going to a wedding at Princess Mei Li and her beloved Chen. "
+    "date": 2020,
+    "time": 102,
+    "imdb": 7.8,
+    "votes": 2365,
+    "meta_score": 5.8,
+    "gross": 1000000.00,
+    "description": "Princess Odette and Prince Derek are going to a wedding at Princess Mei Li and her beloved Chen. "
                 "But evil forces are at stake and the wedding plans are tarnished and "
-                "true love has difficult conditions."
+                "true love has difficult conditions.",
+    "price": 8.99,
+    "certification_id": 3,
+    "genres": genre_schema_example,
+    "stars": star_schema_example,
+    "directors": director_schema_example
 }
 
 movie_list_response_schema_example = {
@@ -20,57 +66,39 @@ movie_list_response_schema_example = {
 
 movie_create_schema_example = {
     "name": "New Movie",
-    "date": "2025-01-01",
-    "score": 85.5,
-    "overview": "An amazing movie.",
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
-    "country": "US",
-    "genres": ["Action", "Adventure"],
-    "actors": ["John Doe", "Jane Doe"],
-    "languages": ["English", "French"]
-}
-
-
-language_schema_example = {
-    "id": 1,
-    "name": "English"
-}
-
-country_schema_example = {
-    "id": 1,
-    "code": "US",
-    "name": "United States"
-}
-
-genre_schema_example = {
-    "id": 1,
-    "genre": "Comedy"
-}
-
-actor_schema_example = {
-    "id": 1,
-    "name": "JimmyFallon"
+    "year": 2023,
+    "time": 102,
+    "imdb": 8.5,
+    "votes": 890,
+    "meta_score": 45.3,
+    "gross": 1000000.00,
+    "description": "An amazing movie.",
+    "price": 9.99,
+    "certification_name": "pg-13",
+    "genres": ["action", "adventure"],
+    "stars": ["Rutger Hauer", "Jeff Cohen"],
+    "directors": ["Steven Spielberg", "Peter Weir"]
 }
 
 movie_detail_schema_example = {
     **movie_item_schema_example,
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
-    "actors": [actor_schema_example],
-    "country": country_schema_example,
+    "stars": [star_schema_example],
     "genres": [genre_schema_example],
-    "languages": [language_schema_example]
+    "directors": [director_schema_example]
 }
 
 movie_update_schema_example = {
-    "name": "Update Movie",
-    "date": "2025-01-01",
-    "score": 85.5,
-    "overview": "An amazing movie.",
-    "status": "Released",
-    "budget": 1000000.00,
-    "revenue": 5000000.00,
+    "name": "New Movie",
+    "year": 2023,
+    "time": 102,
+    "imdb": 8.5,
+    "votes": 890,
+    "meta_score": 45.3,
+    "gross": 1000000.00,
+    "description": "An amazing movie.",
+    "price": 9.99,
+    "certification_name": "pg-13",
+    "genres": ["action", "adventure"],
+    "stars": ["Rutger Hauer", "Jeff Cohen"],
+    "directors": ["Steven Spielberg", "Peter Weir"]
 }

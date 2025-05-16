@@ -1,22 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
-from database import get_db, MovieModel
 from database import (
-    CountryModel,
-    GenreModel,
-    ActorModel,
-    LanguageModel
+    get_db, MovieModel, StarModel, DirectorModel, CertificationModel
 )
+from database import GenreModel
+from routes.filters import apply_m2m_filter
+from routes.permissions import is_moderator_or_admin
 from schemas import (
     MovieListResponseSchema,
-    MovieListItemSchema,
-    MovieDetailSchema
+    MovieDetailSchema,
+    MovieUpdateSchema,
+    MovieCreateSchema
 )
-from schemas.movies import MovieCreateSchema, MovieUpdateSchema
+
 
 router = APIRouter()
 
@@ -26,10 +28,13 @@ router = APIRouter()
     response_model=MovieListResponseSchema,
     summary="Get a paginated list of movies",
     description=(
-            "<h3>This endpoint retrieves a paginated list of movies from the database. "
-            "Clients can specify the `page` number and the number of items per page using `per_page`. "
-            "The response includes details about the movies, total pages, and total items, "
-            "along with links to the previous and next pages if applicable.</h3>"
+            "<h3>This endpoint retrieves a paginated list of movies from the database.</h3>"
+    "<ul>"
+    "<li>Use <code>page</code> and <code>per_page</code> to paginate results.</li>"
+    "<li>Filter movies by <code>genres</code>, <code>stars</code>, <code>directors</code>, <code>year</code>, and <code>min_rating</code>.</li>"
+    "<li>Sort results using <code>sort_params</code> (e.g., <code>older,rating</code>). Only non-conflicting combinations are allowed.</li>"
+    "</ul>"
+    "<p>Example: <code>/movies/?genres=action,horror&sort_params=older,rating&page=2</code></p>"
     ),
     responses={
         404: {
@@ -44,41 +49,169 @@ router = APIRouter()
 )
 async def get_movie_list(
         page: int = Query(1, ge=1, description="Page number (1-based index)"),
-        per_page: int = Query(10, ge=1, le=20, description="Number of items per page"),
+        per_page: int = Query(10, ge=1, le=20,
+                              description="Number of items per page"),
+        genres: Optional[str] = Query(
+            default=None,
+            description="Genres to filter on (single or muliiple with using '|' for OR, ',' for AND), Case-insensitive filtering.",
+            examples=[
+                "?genres=action|horror",
+                "?genres=action,horror",
+                "?genres=action"
+            ],
+            example="action,horror"
+        ),
+        stars: str = Query(
+            default=None,
+            description="Stars to filter on (single or muliiple with using '|' for OR, ',' for AND), Case-insensitive filtering.",
+            examples=[
+                "?stars=Danny de Vito|Nicolas Cage",
+                "?stars=Danny de Vito,Nicolas Cage",
+                "?stars=Danny de Vito"
+            ],
+            example="Gaylen Ross,David Emge"
+        ),
+        directors: str = Query(
+            default=None,
+            description="Directors to filter on (single or muliiple with using '|' for OR, ',' for AND), Case-insensitive filtering.",
+            examples=[
+                "?directors=Stiven Spilberg|Nicolas Cage",
+                "?directors=Stiven Spilberg,Nicolas Cage",
+                "?directors=Stiven Spilberg"
+            ],
+            example="George A. Romero"
+        ),
+        year: str = Query(
+            default=None,
+            description="Release  year to filter on (exact)",
+            example="1978"
+        ),
+        min_rating: str = Query(
+            default=None,
+            description="IMDb rating to filter on. Biger or equal than value to filter on",
+            example="7.8"
+        ),
+        sort_params: str = Query(
+            default=None,
+            description="Ordering movies by price: (l-price, h-price), or "
+                        "release year: (older, newer) and imdb rating: rating"
+                        "or a combination of them separated by a comma",
+            examples={"single": {"value": "older"}, "multiple": {"value": "older,h-price"}},
+            example="older,h-price"
+        ),
+
         db: AsyncSession = Depends(get_db),
 ) -> MovieListResponseSchema:
     """
-    Fetch a paginated list of movies from the database (asynchronously).
+    Retrieve a paginated and filterable list of movies from the database.
 
-    This function retrieves a paginated list of movies, allowing the client to specify
-    the page number and the number of items per page. It calculates the total pages
-    and provides links to the previous and next pages when applicable.
+    This endpoint allows clients to query movies with flexible filtering and sorting options.
+    Clients can specify pagination (`page`, `per_page`), and apply filters on genres, stars,
+    directors, release year, and minimum IMDb rating. Sorting can be applied on price,
+    release year, and rating.
 
-    :param page: The page number to retrieve (1-based index, must be >= 1).
-    :type page: int
-    :param per_page: The number of items to display per page (must be between 1 and 20).
-    :type per_page: int
-    :param db: The async SQLAlchemy database session (provided via dependency injection).
-    :type db: AsyncSession
+    Filtering:
+    - `genres`, `stars`, `directors`: support multiple values using:
+        - `,` for AND (e.g., `action,comedy`)
+        - `|` for OR  (e.g., `action|horror`)
+    - `year`: filter by exact release year (e.g., `1978`)
+    - `min_rating`: float, filters movies with IMDb rating >= value
 
-    :return: A response containing the paginated list of movies and metadata.
-    :rtype: MovieListResponseSchema
+    Sorting (`sort_params`):
+    - Use comma-separated values. Supported options:
+        - `l-price`: price low to high
+        - `h-price`: price high to low
+        - `older`: oldest movies first
+        - `newer`: newest movies first
+        - `rating`: IMDb rating descending
+    - Conflicting options are not allowed together, e.g.:
+        - `l-price` and `h-price`
+        - `older` and `newer`
 
-    :raises HTTPException: Raises a 404 error if no movies are found for the requested page.
+    Parameters:
+    - page (int): Page number to retrieve (starting from 1).
+    - per_page (int): Number of movies per page (1 to 20).
+    - genres (str, optional): Filter by genres.
+    - stars (str, optional): Filter by stars.
+    - directors (str, optional): Filter by directors.
+    - year (str, optional): Filter by exact release year.
+    - min_rating (str, optional): Filter by minimum IMDb rating.
+    - sort_params (str, optional): Sorting parameters (see above).
+
+    Returns:
+    - MovieListResponseSchema: Paginated list of movies with navigation links and metadata.
+
+    Raises:
+    - HTTPException 400: For invalid filters, sort parameters, or types.
+    - HTTPException 404: If no movies match the filters.
     """
+
     offset = (page - 1) * per_page
+    if not sort_params:
+        order_by = MovieModel.default_order_by()
+    else:
+        params = sort_params.split(",")
+        allowed_params = {"l-price", "h-price", "older", "newer", "rating"}
+        for index, param in enumerate(params):
+            param = param.strip()
+            if param not in allowed_params:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid sort_param value: '{param}', "
+                           f"value should be one of {allowed_params}")
+            params[index] = param
 
-    count_stmt = select(func.count(MovieModel.id))
-    result_count = await db.execute(count_stmt)
-    total_items = result_count.scalar() or 0
+        if {"l-price", "h-price"}.issubset(params) or {"older", "newer"}.issubset(params):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"opposite parameters as  cannot be in the same filter-set"
+            )
 
-    if not total_items:
-        raise HTTPException(status_code=404, detail="No movies found.")
+        sort_map = {
+            "l-price": MovieModel.price.asc,
+            "h-price": MovieModel.price.desc,
+            "older": MovieModel.year.asc,
+            "newer": MovieModel.year.desc,
+            "rating": MovieModel.imdb.desc
+        }
+        order_by = [sort_map[param]() for param in params]
 
-    order_by = MovieModel.default_order_by()
-    stmt = select(MovieModel)
+    stmt = select(MovieModel).options(
+        selectinload(MovieModel.genres),
+        selectinload(MovieModel.directors),
+        selectinload(MovieModel.stars)
+    )
+
+    stmt = apply_m2m_filter(stmt, MovieModel.genres, genres)
+    stmt = apply_m2m_filter(stmt, MovieModel.directors, directors)
+    stmt = apply_m2m_filter(stmt, MovieModel.stars, stars)
+
+    if year:
+        try:
+            print(year)
+            year = int(year)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="'year' in query string must be an integer."
+            )
+        stmt = stmt.filter(MovieModel.year == year)
+    if min_rating:
+        try:
+            min_rating = float(min_rating)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="'min_rating' in query string must be a float."
+            )
+        stmt = stmt.filter(MovieModel.imdb >= min_rating)
+
     if order_by:
         stmt = stmt.order_by(*order_by)
+
+    count_filtered_stmt = select(func.count()).select_from(stmt.subquery())
+    result_total_filtered_items = await db.execute(count_filtered_stmt)
+    total_filtered_items = result_total_filtered_items.scalar() or 0
 
     stmt = stmt.offset(offset).limit(per_page)
 
@@ -88,28 +221,29 @@ async def get_movie_list(
     if not movies:
         raise HTTPException(status_code=404, detail="No movies found.")
 
-    movie_list = [MovieListItemSchema.model_validate(movie) for movie in movies]
+    movie_list = [MovieDetailSchema.model_validate(movie) for movie in movies]
 
-    total_pages = (total_items + per_page - 1) // per_page
+    total_filtered_pages = (total_filtered_items + per_page - 1) // per_page
 
     response = MovieListResponseSchema(
         movies=movie_list,
         prev_page=f"/theater/movies/?page={page - 1}&per_page={per_page}" if page > 1 else None,
-        next_page=f"/theater/movies/?page={page + 1}&per_page={per_page}" if page < total_pages else None,
-        total_pages=total_pages,
-        total_items=total_items,
+        next_page=f"/theater/movies/?page={page + 1}&per_page={per_page}" if page < total_filtered_pages else None,
+        total_pages=total_filtered_pages,
+        total_items=total_filtered_items,
     )
     return response
 
 
 @router.post(
     "/movies/",
+    dependencies=[Depends(is_moderator_or_admin)],
     response_model=MovieDetailSchema,
     summary="Add a new movie",
     description=(
-            "<h3>This endpoint allows clients to add a new movie to the database. "
-            "It accepts details such as name, date, genres, actors, languages, and "
-            "other attributes. The associated country, genres, actors, and languages "
+            "<h3>This endpoint allows moderators and admins add a new movie to the database. "
+            "It accepts details such as name, year, genres, stars, imdb, and "
+            "other attributes. The associated stars, directors and genres "
             "will be created or linked automatically.</h3>"
     ),
     responses={
@@ -134,9 +268,10 @@ async def create_movie(
     """
     Add a new movie to the database.
 
-    This endpoint allows the creation of a new movie with details such as
-    name, release date, genres, actors, and languages. It automatically
-    handles linking or creating related entities.
+    This endpoint allows moderators and admins add a new movie to the database
+     with details such as name, year, genres, stars, imdb, time, votes,
+    meta_score, gross, description, price, certification, genres, stars,
+    directors. It automatically handles linking or creating related entities.
 
     :param movie_data: The data required to create a new movie.
     :type movie_data: MovieCreateSchema
@@ -151,8 +286,9 @@ async def create_movie(
         - 400 if input data is invalid (e.g., violating a constraint).
     """
     existing_stmt = select(MovieModel).where(
-        (MovieModel.name == movie_data.name),
-        (MovieModel.date == movie_data.date)
+        (MovieModel.name == movie_data.name) &
+        (MovieModel.year == movie_data.year) &
+        (MovieModel.time == movie_data.time)
     )
     existing_result = await db.execute(existing_stmt)
     existing_movie = existing_result.scalars().first()
@@ -161,72 +297,85 @@ async def create_movie(
         raise HTTPException(
             status_code=409,
             detail=(
-                f"A movie with the name '{movie_data.name}' and release date "
-                f"'{movie_data.date}' already exists."
+                f"A movie with the name '{movie_data.name}', release year "
+                f"'{movie_data.year}' and duration time '{movie_data.time}' "
+                f"already exists."
             )
         )
 
     try:
-        country_stmt = select(CountryModel).where(CountryModel.code == movie_data.country)
-        country_result = await db.execute(country_stmt)
-        country = country_result.scalars().first()
-        if not country:
-            country = CountryModel(code=movie_data.country)
-            db.add(country)
-            await db.flush()
-
         genres = []
-        for genre_name in movie_data.genres:
-            genre_stmt = select(GenreModel).where(GenreModel.name == genre_name)
-            genre_result = await db.execute(genre_stmt)
-            genre = genre_result.scalars().first()
+        if movie_data.genres:
+            for genre_name in movie_data.genres:
+                genre_stmt = select(GenreModel).where(
+                    GenreModel.name == genre_name)
+                genre_result = await db.execute(genre_stmt)
+                genre = genre_result.scalars().first()
 
-            if not genre:
-                genre = GenreModel(name=genre_name)
-                db.add(genre)
-                await db.flush()
-            genres.append(genre)
+                if not genre:
+                    genre = GenreModel(name=genre_name)
+                    db.add(genre)
+                    await db.flush()
+                genres.append(genre)
+        stars = []
+        if movie_data.stars:
+            for star_name in movie_data.stars:
+                star_stmt = select(StarModel).where(
+                    StarModel.name == star_name)
+                star_result = await db.execute(star_stmt)
+                star = star_result.scalars().first()
 
-        actors = []
-        for actor_name in movie_data.actors:
-            actor_stmt = select(ActorModel).where(ActorModel.name == actor_name)
-            actor_result = await db.execute(actor_stmt)
-            actor = actor_result.scalars().first()
+                if not star:
+                    star = StarModel(name=star_name)
+                    db.add(star)
+                    await db.flush()
+                stars.append(star)
 
-            if not actor:
-                actor = ActorModel(name=actor_name)
-                db.add(actor)
-                await db.flush()
-            actors.append(actor)
+        directors = []
+        if movie_data.directors:
+            for director_name in movie_data.directors:
+                director_stmt = select(DirectorModel).where(
+                    DirectorModel.name == director_name)
+                director_result = await db.execute(director_stmt)
+                director = director_result.scalars().first()
 
-        languages = []
-        for language_name in movie_data.languages:
-            lang_stmt = select(LanguageModel).where(LanguageModel.name == language_name)
-            lang_result = await db.execute(lang_stmt)
-            language = lang_result.scalars().first()
+                if not director:
+                    director = DirectorModel(name=director_name)
+                    db.add(director)
+                    await db.flush()
+                directors.append(director)
 
-            if not language:
-                language = LanguageModel(name=language_name)
-                db.add(language)
-                await db.flush()
-            languages.append(language)
+        certification_stmt = select(CertificationModel).where(
+            (CertificationModel.name == movie_data.certification_name)
+        )
+        certification_result = await db.execute(certification_stmt)
+        certification = certification_result.scalars().first()
+        if not certification:
+            certification = CertificationModel(
+                name=movie_data.certification_name)
 
         movie = MovieModel(
             name=movie_data.name,
-            date=movie_data.date,
-            score=movie_data.score,
-            overview=movie_data.overview,
-            status=movie_data.status,
-            budget=movie_data.budget,
-            revenue=movie_data.revenue,
-            country=country,
+            year=movie_data.year,
+            time=movie_data.time,
+            imdb=movie_data.imdb,
+            votes=movie_data.votes,
+            meta_score=movie_data.meta_score,
+            gross=movie_data.gross,
+            description=movie_data.description,
+            price=movie_data.price,
+            certification=certification,
             genres=genres,
-            actors=actors,
-            languages=languages,
+            stars=stars,
+            directors=directors
         )
+
         db.add(movie)
         await db.commit()
-        await db.refresh(movie, ["genres", "actors", "languages"])
+        await db.refresh(
+            movie,
+            ["genres", "stars", "directors", "certification"]
+        )
 
         return MovieDetailSchema.model_validate(movie)
 
@@ -279,10 +428,9 @@ async def get_movie_by_id(
     stmt = (
         select(MovieModel)
         .options(
-            joinedload(MovieModel.country),
+            joinedload(MovieModel.directors),
             joinedload(MovieModel.genres),
-            joinedload(MovieModel.actors),
-            joinedload(MovieModel.languages),
+            joinedload(MovieModel.stars),
         )
         .where(MovieModel.id == movie_id)
     )
@@ -301,6 +449,7 @@ async def get_movie_by_id(
 
 @router.delete(
     "/movies/{movie_id}/",
+    dependencies=[Depends(is_moderator_or_admin)],
     summary="Delete a movie by ID",
     description=(
             "<h3>Delete a specific movie from the database by its unique ID.</h3>"
@@ -360,6 +509,7 @@ async def delete_movie(
 
 @router.patch(
     "/movies/{movie_id}/",
+    dependencies=[Depends(is_moderator_or_admin)],
     summary="Update a movie by ID",
     description=(
             "<h3>Update details of a specific movie by its unique ID.</h3>"

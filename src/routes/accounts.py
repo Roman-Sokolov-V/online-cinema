@@ -34,7 +34,7 @@ from schemas import (
     TokenRefreshResponseSchema, LogoutResponseSchema, AccessTokenPayload,
     PasswordChangeRequestSchema, ChangeGroupRequestSchema
 )
-from security.http import get_token_or_none
+from security.http import get_token_or_none, get_optional_auth_token
 from security.interfaces import JWTAuthManagerInterface
 from .permissions import is_any_group, is_admin_group
 
@@ -227,6 +227,7 @@ async def send_new_activation_token(
 
 @router.post(
     "/activate/",
+    dependencies=[Depends(get_optional_auth_token)],
     response_model=MessageResponseSchema,
     name="activate-user",
     summary="Activate User Account",
@@ -924,6 +925,7 @@ async def change_password(
 
 @router.patch(
     "/users/{user_id}/group/",
+    dependencies=[Depends(is_admin_group)],
     response_model=MessageResponseSchema,
     summary="Request to change user group.",
     description="Change a user's group, providing admin access token.",
@@ -962,7 +964,7 @@ async def change_user_group(
         user_id: int,
         data: ChangeGroupRequestSchema,
         db: AsyncSession = Depends(get_db),
-        _: None = Depends(is_admin_group),
+
 ) -> MessageResponseSchema:
     """
     Endpoint for changing a user group.
