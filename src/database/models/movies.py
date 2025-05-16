@@ -111,11 +111,6 @@ class MovieModel(Base):
     __tablename__ = "movies"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    users_like: Mapped[list["UserModel"]] = relationship(
-        "UserModel",
-        secondary=FavoriteModel,
-        back_populates="favorite_movies"
-    )
     uuid: Mapped[Uuid] = mapped_column(
         UUID(as_uuid=True),
         default=uuid.uuid4,
@@ -136,7 +131,7 @@ class MovieModel(Base):
     )
     certification: Mapped[CertificationModel] = relationship(
         back_populates="movies",
-        passive_deletes=True    )
+        passive_deletes=True)
     genres: Mapped[list[GenreModel]] = relationship(
         "GenreModel",
         secondary=MoviesGenresModel,
@@ -156,8 +151,11 @@ class MovieModel(Base):
         cascade="all, delete-orphan",
         lazy="selectin"
     )
-
-
+    users_like: Mapped[list["UserModel"]] = relationship(
+        "UserModel",
+        secondary=FavoriteModel,
+        back_populates="favorite_movies"
+    )
     __table_args__ = (
         UniqueConstraint(
             "name", "year", "time", name="unique_movie_constraint"
@@ -174,24 +172,4 @@ class MovieModel(Base):
             f" release_date='{self.year}',"
             f" score={self.meta_score})>"
         )
-
-# class OpinionModel(Base):
-#     __tablename__ = "opinions"
-#
-#     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-#     comment: Mapped[str] = mapped_column(Text, nullable=True)
-#     rating: Mapped[int] = mapped_column(Integer, nullable=True, min_value=1, max_value=10)
-#     movie_id: Mapped[int]
-#     user_id: Mapped[int]
-#
-#
-#
-# class AnsverCommentsModel(Base):
-#     __tablename__ = "comments"
-#
-#     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-#     comment: Mapped[str] = mapped_column(Text, nullable=True)
-#     opinion_id
-#     user_id
-
 

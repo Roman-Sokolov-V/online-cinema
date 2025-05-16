@@ -1,6 +1,7 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Path, \
+    Body
 from sqlalchemy import select, func
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +9,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from config import get_accounts_email_notificator
 from database import (
-    get_db, MovieModel, UserModel, CommentModel
+    get_db, MovieModel, UserModel, CommentModel, RateModel
 )
 from notifications import EmailSenderInterface
 
@@ -23,8 +24,10 @@ from schemas import (
     FavoriteListSchema, CommentSchema, ResponseCommentarySchema, ReplySchema,
     ResponseReplySchema
 )
+from schemas.opinions import RateSchema
 
 router = APIRouter()
+
 
 @router.post(
     "/movies/favorite/{movie_id}/",
@@ -198,7 +201,8 @@ async def remove_from_favorite(
     },
 )
 async def get_favorites(
-        token_payload: AccessTokenPayload = Depends(get_required_access_token_payload),
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload),
         db: AsyncSession = Depends(get_db),
         page: int = Query(1, ge=1, description="Page number (1-based index)"),
         per_page: int = Query(10, ge=1, le=20,
@@ -211,7 +215,7 @@ async def get_favorites(
                 "?genres=action,horror",
                 "?genres=action"
             ],
-            example="action,horror"
+            #example="action,horror"
         ),
         stars: str = Query(
             default=None,
@@ -231,7 +235,7 @@ async def get_favorites(
                 "?directors=Stiven Spilberg,Nicolas Cage",
                 "?directors=Stiven Spilberg"
             ],
-            example="George A. Romero"
+            #example="George A. Romero"
         ),
         year: str = Query(
             default=None,
@@ -265,11 +269,10 @@ async def get_favorites(
                 detail="User with the access token was not found."
             )
 
-
     offset = (page - 1) * per_page
 
-
-    stmt = select(MovieModel).where(MovieModel.users_like.any(UserModel.id == user.id)).options(
+    stmt = select(MovieModel).where(
+        MovieModel.users_like.any(UserModel.id == user.id)).options(
         selectinload(MovieModel.genres),
         selectinload(MovieModel.directors),
         selectinload(MovieModel.stars)
@@ -317,7 +320,7 @@ async def get_favorites(
 
         if {"l-price", "h-price"}.issubset(params) or {"older",
                                                        "newer"}.issubset(
-                params):
+            params):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"opposite parameters as  cannot be in the same filter-set"
@@ -396,10 +399,11 @@ async def get_favorites(
     status_code=201
 )
 async def add_comment_to_movie(
-    movie_id: int,
-    comment_data: CommentSchema,
-    token_payload: AccessTokenPayload = Depends(get_required_access_token_payload),
-    db: AsyncSession=Depends(get_db),
+        movie_id: int,
+        comment_data: CommentSchema,
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload),
+        db: AsyncSession = Depends(get_db),
 
 ) -> ResponseCommentarySchema:
     user_id = token_payload["user_id"]
@@ -435,11 +439,10 @@ async def add_comment_to_movie(
     )
 
 
-
 @router.post(
     "/movies/comment/reply/{comment_id}/",
     response_model=ResponseReplySchema,
-    summary="Add commentary",
+    summary="Add commentary to movie",
     description="<h3>Add commentary to movie.</h3>",
     responses={
         201: {
@@ -494,11 +497,12 @@ async def add_comment_to_movie(
     status_code=201
 )
 async def add_reply_to_comment(
-    comment_id: int,
-    reply_data: ReplySchema,
-    token_payload: AccessTokenPayload = Depends(get_required_access_token_payload),
-    db: AsyncSession=Depends(get_db),
-    email_sender: EmailSenderInterface = Depends(
+        comment_id: int,
+        reply_data: ReplySchema,
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload),
+        db: AsyncSession = Depends(get_db),
+        email_sender: EmailSenderInterface = Depends(
             get_accounts_email_notificator),
 ) -> ResponseCommentarySchema:
     user_id = token_payload["user_id"]
@@ -536,9 +540,9 @@ async def add_reply_to_comment(
     )
 
     db.add(reply)
-    await db.flush()
-    await db.refresh(reply)
     await db.commit()
+    await db.refresh(reply)
+
     recipient_user = await db.get(UserModel, comment.user_id)
 
     await email_sender.send_activity_notificator(
@@ -554,73 +558,71 @@ async def add_reply_to_comment(
     return ResponseReplySchema.model_validate(
         reply, from_attributes=True
     )
-#
-# @router.post(
-#     "/movies/{movie_id}/rate",
-#     response_model=ResponseMessageSchema,
-#     summary="Rate movie",
-#     description="<h3>Rate movie by movie id.</h3>",
-#     responses={
-#         201: {
-#             "description": "Reply successfully added to the movie.",
-#             "content": {
-#                 "application/json": {
-#                     "example": {
-#                         "id": 100,
-#                         "content": "I totally agree!",
-#                         "user_id": 5,
-#                         "movie_id": 10,
-#                         "parent_id": 85
-#                     }
-#                 }
-#             },
-#         },
-#         400: {
-#             "description": "You can't reply your commentary.",
-#             "content": {
-#                 "application/json": {
-#                     "example": {
-#                         "detail": "You can't reply your commentary."}
-#                 }
-#             },
-#         },
-#         404: {
-#             "description": "Movie not found.",
-#             "content": {
-#                 "application/json": {
-#                     "example": {
-#                         "detail": "Movie not found."}
-#                 }
-#             },
-#         },
-#         422: {
-#             "description": "Validation Error",
-#             "content": {
-#                 "application/json": {
-#                     "example": {
-#                         "detail": [
-#                             {
-#                                 "loc": ["body", "content"],
-#                                 "msg": "Value error, At least one of content or is_like must be set",
-#                                 "type": "value_error"
-#                             }
-#                         ]
-#                     }
-#                 }
-#             },
-#         },
-#     }
-# )
-# async def rate_movie(
-#         movie_id: int,
-#         data: RateSchema,
-#         token_payload: AccessTokenPayload = Depends(get_required_access_token_payload),
-#         db: AsyncSession=Depends(get_db),
-# ) -> ResponseMessageSchema:
-#     movie = await db.get(MovieModel, movie_id)
-#     if not movie:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND,
-#             detail="Movie not found."
-#         )
-#     FavoriteModel
+
+
+@router.post(
+    "/movies/{movie_id}/rate",
+    response_model=ResponseMessageSchema,
+    summary="Rate movie",
+    description="<h3>Rate movie by movie id. Estimation is an integer of 1 to 10</h3>",
+    responses={
+        200: {
+            "description": "The film has been successfully appreciated",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie successfully rated.",
+                    }
+                }
+            },
+        },
+        400: {
+            "description": "Movie already rated. Can`t rate twice",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie already rated."}
+                }
+            },
+        },
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie not found."}
+                }
+            },
+        },
+    },
+    status_code=200
+)
+async def rate_movie(
+        movie_id: int,
+        data: RateSchema,
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload),
+        db: AsyncSession = Depends(get_db),
+) -> ResponseMessageSchema:
+    movie = await db.get(MovieModel, movie_id)
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Movie not found."
+        )
+    user_id = token_payload["user_id"]
+    stmt = select(RateModel).where(
+        (RateModel.user_id == user_id) &
+        (RateModel.movie_id == movie_id)
+    )
+    result = await db.execute(stmt)
+    existing_rate = result.scalars().first()
+    if existing_rate is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Movie already rated."
+        )
+    rate = RateModel(user_id=user_id, movie_id=movie_id, rate=data.rate)
+    db.add(rate)
+    await db.commit()
+    return ResponseMessageSchema(detail="Movie successfully rated.")

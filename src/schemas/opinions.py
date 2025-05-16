@@ -1,15 +1,25 @@
 from typing import Optional, List
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, Field
 
 from schemas.examples.opinions import (
     response_commentary_schema_example,
-    response_reply_schema_example,
+    response_reply_schema_example, comment_schema_example,
+    reply_schema_example,
 )
 
 
 class CommentSchema(BaseModel):
     content: str
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                comment_schema_example
+            ]
+        }
+    }
 
 
 class ResponseCommentarySchema(BaseModel):
@@ -31,6 +41,15 @@ class ResponseCommentarySchema(BaseModel):
 class ReplySchema(BaseModel):
     content: Optional[str] = None
     is_like: Optional[bool] = None
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "examples": [
+                reply_schema_example
+            ]
+        }
+    }
 
     @model_validator(mode="after")
     def check_reaction_needed(self) -> "ReplySchema":
@@ -55,3 +74,9 @@ class ResponseReplySchema(BaseModel):
             ]
         }
     }
+
+
+class RateSchema(BaseModel):
+    rate: int = Field(..., ge=0, lt=10)
+
+

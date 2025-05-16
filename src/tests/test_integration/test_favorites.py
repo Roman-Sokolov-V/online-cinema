@@ -146,12 +146,13 @@ async def get_user_header_favorite_movies(session, user_data):
 
 
 @pytest.mark.asyncio
-async def test_get_favorites_with_custom_parameters(client, db_session,
-                                                    seed_database,
-                                                    create_activate_login_user):
+async def test_get_favorites_with_custom_parameters(
+        client, db_session, seed_database, create_activate_login_user
+):
     user_data = await create_activate_login_user(group_name="user")
     user, header, movies = await get_user_header_favorite_movies(
-        session=db_session, user_data=user_data)
+        session=db_session, user_data=user_data
+    )
 
     response = await client.get(Base_URL, headers=header)
     assert response.status_code == 200, "Expected 200"

@@ -1,13 +1,13 @@
-from sqlalchemy import Column, Table, ForeignKey, Integer, String, UniqueConstraint, CheckConstraint
+from sqlalchemy import Column, Table, ForeignKey, Integer, UniqueConstraint
 from database import Base
 
 
 FavoriteModel = Table(
-    "movies_users",
+    "users_favorite_movies",
     Base.metadata,
     Column(
         "id", Integer,
-        primary_key=True, autoincrement=True, nullable=False
+        primary_key=True, autoincrement=True
     ),
     Column(
         "movie_id",
@@ -15,11 +15,7 @@ FavoriteModel = Table(
     Column(
         "user_id",
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-    Column(
-        "rate", Integer, nullable=True,
-    ),
     UniqueConstraint(
-        "movie_id", "user_id", name="idx_unique_user_movie"
+        "movie_id", "user_id", name="idx_unique_user_movie_favorite"
     ),
-    CheckConstraint("rate BETWEEN 1 AND 10", name="check_rate_range")
 )

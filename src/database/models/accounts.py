@@ -12,7 +12,8 @@ from sqlalchemy import (
     func,
     Text,
     Date,
-    UniqueConstraint
+    UniqueConstraint,
+    CheckConstraint,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -23,16 +24,16 @@ from sqlalchemy.orm import (
 
 from database import Base
 from .associations import FavoriteModel
-
+from .movies import MovieModel
 
 from database.validators import accounts as validators
 from database.models.opinions import CommentModel
 from security.passwords import hash_password, verify_password
 from security.utils import generate_secure_token
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from database import MovieModel
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+#     from database import MovieModel
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -62,11 +63,6 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    favorite_movies: Mapped[List["MovieModel"]] = relationship(
-        "MovieModel",
-        secondary=FavoriteModel,
-        back_populates="users_like"
-    )
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     _hashed_password: Mapped[str] = mapped_column("hashed_password", String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -109,6 +105,12 @@ class UserModel(Base):
         cascade="all, delete-orphan",
         lazy="selectin"
     )
+    favorite_movies: Mapped[List["MovieModel"]] = relationship(
+        "MovieModel",
+        secondary=FavoriteModel,
+        back_populates="users_like"
+    )
+
 
 
     def __repr__(self):
@@ -211,18 +213,21 @@ class ActivationTokenModel(TokenBaseModel):
 class PasswordResetTokenModel(TokenBaseModel):
     __tablename__ = "password_reset_tokens"
 
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="password_reset_token")
+    user: Mapped[UserModel] = relationship(
+        "UserModel", back_populates="password_reset_token")
 
     __table_args__ = (UniqueConstraint("user_id"),)
 
     def __repr__(self):
-        return f"<PasswordResetTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+        return (f"<PasswordResetTokenModel(id={self.id}, token={self.token},"
+                f" expires_at={self.expires_at})>")
 
 
 class RefreshTokenModel(TokenBaseModel):
     __tablename__ = "refresh_tokens"
 
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="refresh_tokens")
+    user: Mapped[UserModel] = relationship(
+        "UserModel", back_populates="refresh_tokens")
     token: Mapped[str] = mapped_column(
         String(512),
         unique=True,
@@ -231,16 +236,37 @@ class RefreshTokenModel(TokenBaseModel):
     )
 
     @classmethod
-    def create(cls, user_id: int | Mapped[int], days_valid: int, token: str) -> "RefreshTokenModel":
+    def create(
+            cls, user_id: int | Mapped[int], days_valid: int, token: str
+    ) -> "RefreshTokenModel":
         """
         Factory method to create a new RefreshTokenModel instance.
 
-        This method simplifies the creation of a new refresh token by calculating
-        the expiration date based on the provided number of valid days and setting
-        the required attributes.
+        This method simplifies the creation of a new refresh token by
+        calculating the expiration date based on the provided number of valid
+        days and setting the required attributes.
         """
         expires_at = datetime.now(timezone.utc) + timedelta(days=days_valid)
         return cls(user_id=user_id, expires_at=expires_at, token=token)
 
     def __repr__(self):
-        return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+        return (f"<RefreshTokenModel(id={self.id}, token={self.token},"
+                f" expires_at={self.expires_at})>")
+
+
+class RateModel(Base):
+    __tablename__ = "users_rate_movies"
+    __table_args__ = (
+        UniqueConstraint("movie_id", "user_id",
+                         name="idx_unique_together_for_rate"),
+        CheckConstraint("rate BETWEEN 1 AND 10", name="check_rate_range"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    movie_id: Mapped[int] = mapped_column(
+        ForeignKey("movies.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    rate: Mapped[int] = mapped_column(nullable=False)
+    movie: Mapped[MovieModel] = relationship(MovieModel, backref="rate")
+    user: Mapped[UserModel] = relationship(UserModel, backref="rate")

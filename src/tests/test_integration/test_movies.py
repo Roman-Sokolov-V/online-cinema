@@ -9,9 +9,7 @@ from database import (
     GenreModel,
     StarModel,
     DirectorModel,
-
 )
-from routes.permissions import is_moderator_or_admin
 
 
 @pytest.mark.asyncio
@@ -995,23 +993,6 @@ async def test_permissions_update_movie_by_all_user_groups(client, db_session, s
         f"/api/v1/theater/movies/{third_movie_id}/", json=movie_data, headers=admin_headers
     )
     assert response.status_code == 200, f"Expected status code 204, but got {response.status_code}"
-
-###########################################################################################
-@pytest.mark.asyncio
-async def test_dependency_is_moderator_or_admin(client, db_session, seed_database, create_activate_login_user):
-    moderator_data = await create_activate_login_user(group_name="moderator")
-    moderator_access_token = moderator_data["access_token"]
-    moderator_header = {"Authorization": f"Bearer {moderator_access_token}"}
-
-    admin_data = await create_activate_login_user(group_name="admin")
-    admin_access_token = moderator_data["access_token"]
-    admin_header = {"Authorization": f"Bearer {admin_access_token}"}
-
-    user_data = await create_activate_login_user(group_name="user")
-    user_access_token = moderator_data["access_token"]
-    user_header = {"Authorization": f"Bearer {user_access_token}"}
-    is_moderator_or_admin(moderator_header)
-
 
 
 @pytest.mark.asyncio

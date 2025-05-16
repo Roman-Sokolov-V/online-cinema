@@ -235,6 +235,7 @@ class MovieUpdateSchema(BaseModel):
     time: Optional[int] = None
     imdb: Optional[float] = Field(None, ge=1.0, le=10.0)
     votes: Optional[int] = Field(None, ge=1)
+
     meta_score: Optional[float] = Field(None, ge=0.0)
     gross: Optional[float] = Field(None, ge=0.0)
     description: Optional[str] = None
