@@ -32,11 +32,10 @@ async def test_add_movie_to_cart_that_not_exists_yet(
     assert item_db.movie_id == movie.id
     assert cart_db.user_id == user.id
 
-    print(response.json())
     assert response.json().get("id") == cart_db.id
     assert len(response.json().get("cart_items")) == 1
     item_response = response.json().get("cart_items")[0]
-    print(item_response)
+
     assert item_response.get("id") is not None
     assert item_response.get("movie_id") == movie.id
     movie_response = item_response.get("movie")
@@ -93,7 +92,6 @@ async def test_add_movie_to_exists_cart(
     assert movie_2.id in movies_ids_in_cart, "In cart should exists movie_2"
 
 
-
 @pytest.mark.asyncio
 async def test_add_movie_twice_to_cart(
         client,
@@ -117,7 +115,8 @@ async def test_add_movie_twice_to_cart(
         BASE_URL + f"items/{movie.id}/", headers=header
     )
     assert response.status_code == 400
-    assert response.json().get("detail") == "Movie already exists in shopping cart."
+    assert response.json().get(
+        "detail") == "Movie already exists in shopping cart."
 
 
 @pytest.mark.asyncio
@@ -128,7 +127,6 @@ async def test_add_already_purchased_movie_to_cart(
         create_activate_login_user,
         get_movie
 ):
-
     user_data = await create_activate_login_user()
     user = user_data.get("user")
     header = {"Authorization": f"Bearer {user_data['access_token']}"}
@@ -169,7 +167,8 @@ async def test_remove_movie_from_cart_success(
     stmt = select(CartModel).where(CartModel.user_id == user.id)
     result = await db_session.execute(stmt)
     exists_cart_db = result.scalars().first()
-    assert movie.id not in (item.movie_id for item in exists_cart_db.cart_items), "Movie should not be in cart"
+    assert movie.id not in (item.movie_id for item in
+                            exists_cart_db.cart_items), "Movie should not be in cart"
 
 
 async def test_remove_movie_that_not_exists_in_cart(
@@ -191,7 +190,8 @@ async def test_remove_movie_that_not_exists_in_cart(
         BASE_URL + f"items/{movie_2.id}/", headers=header
     )
     assert response.status_code == 400
-    assert response.json().get("detail") == "Movie not exists in shopping cart."
+    assert response.json().get(
+        "detail") == "Movie not exists in shopping cart."
 
 
 async def test_remove_movie_that_not_exists_in_db(
@@ -212,4 +212,37 @@ async def test_remove_movie_that_not_exists_in_db(
         BASE_URL + f"items/{100000}/", headers=header
     )
     assert response.status_code == 404
-    assert response.json().get("detail") == "Movie with the ID provided does not exist."
+    assert response.json().get(
+        "detail") == "Movie with the ID provided does not exist."
+
+
+async def test_list_empty_cart(
+        client,
+        db_session,
+        create_activate_login_user,
+):
+    user_data = await create_activate_login_user()
+    user = user_data["user"]
+    header = {"Authorization": f"Bearer {user_data['access_token']}"}
+    cart = CartModel(user_id=user.id)
+    db_session.add(cart)
+    await db_session.commit()
+    response = await client.get(BASE_URL + f"items/", headers=header)
+    assert response.status_code == 200
+
+    await db_session.refresh(cart, attribute_names=["cart_items"])
+    assert response.json().get("cart_items") == []
+
+
+async def test_list_cart_items_if_cart_not_exists(
+        client,
+        db_session,
+        create_activate_login_user,
+):
+    user_data = await create_activate_login_user()
+    header = {"Authorization": f"Bearer {user_data['access_token']}"}
+
+    response = await client.get(BASE_URL + f"items/", headers=header)
+    assert response.status_code == 404
+    assert response.json().get(
+        "detail") == "You do not have shopping cart yet."

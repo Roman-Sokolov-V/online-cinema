@@ -163,8 +163,42 @@ async def remove_movie_from_cart(
     )
 
 
+@router.get(
+    "/items/",
+    response_model=ResponseShoppingCartSchema,
+    summary="Remove movie from shopping cart",
+    description=("Remove the movie from the cart according"
+                 " to the movie ID provided."),
+    responses={
+        404: {
+            "description": "Shopping cart not exists",
+            "content": {
+                "application/json": {
+                    "example": "You do not have shopping cart yet."
+                }
+            },
+        },
+    },
+    status_code=200
+)
+async def list_items_in_cart(
+    token_payload: AccessTokenPayload = Depends(
+        get_required_access_token_payload
+    ),
+    db: AsyncSession = Depends(get_db),
+):
 
-
+    user_id = token_payload["user_id"]
+    stmt = select(CartModel).where(CartModel.user_id == user_id)
+    result = await db.execute(stmt)
+    cart = result.scalars().first()
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"You do not have shopping cart yet."
+        )
+    return ResponseShoppingCartSchema.model_validate(
+        cart, from_attributes=True)
 
 
 
