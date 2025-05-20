@@ -28,7 +28,7 @@ def is_moderator_or_admin_group(
     return payload
 
 
-def is_admin_group(
+def is_admin(
         payload: AccessTokenPayload = Depends(get_required_access_token_payload)
 ) -> AccessTokenPayload:
     """

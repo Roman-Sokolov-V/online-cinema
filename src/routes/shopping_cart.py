@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from database.models.shopping_cart import PurchaseModel
+from routes.permissions import is_admin
 from routes.utils import get_required_access_token_payload
 
 from database import get_db, MovieModel, CartModel, CartItemModel
@@ -15,6 +16,7 @@ from schemas import (
 )
 
 router = APIRouter()
+
 
 @router.post(
     "/items/{movie_id}/",
@@ -54,11 +56,11 @@ router = APIRouter()
     status_code=200
 )
 async def add_movie_to_cart(
-    movie_id: int = Path(..., ge=0),
-    token_payload: AccessTokenPayload = Depends(
-        get_required_access_token_payload
-    ),
-    db: AsyncSession = Depends(get_db),
+        movie_id: int = Path(..., ge=0),
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload
+        ),
+        db: AsyncSession = Depends(get_db),
 ):
     movie = await db.get(MovieModel, movie_id)
     if not movie:
@@ -98,7 +100,8 @@ async def add_movie_to_cart(
     db.add(item)
     await db.commit()
     await db.refresh(cart, attribute_names=["cart_items"])
-    return ResponseShoppingCartSchema.model_validate(cart, from_attributes=True)
+    return ResponseShoppingCartSchema.model_validate(cart,
+                                                     from_attributes=True)
 
 
 @router.delete(
@@ -132,11 +135,11 @@ async def add_movie_to_cart(
     status_code=200
 )
 async def remove_movie_from_cart(
-    movie_id: int = Path(..., ge=0),
-    token_payload: AccessTokenPayload = Depends(
-        get_required_access_token_payload
-    ),
-    db: AsyncSession = Depends(get_db),
+        movie_id: int = Path(..., ge=0),
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload
+        ),
+        db: AsyncSession = Depends(get_db),
 ):
     movie = await db.get(MovieModel, movie_id)
     if not movie:
@@ -168,6 +171,41 @@ async def remove_movie_from_cart(
 
 
 @router.get(
+    "/{user_id}/",
+    response_model=ResponseShoppingCartSchema,
+    dependencies=[Depends(is_admin)],
+    summary="Retrieve users shopping cart",
+    description=("<h3>For admins only</h3>"
+                 "<p>Retrieve users shopping cart, by user_id.</p>"),
+    responses={
+        404: {
+            "description": "Shopping cart not exists",
+            "content": {
+                "application/json": {
+                    "example": "User do not have shopping cart yet."
+                }
+            },
+        },
+    },
+    status_code=200
+)
+async def retrieve_users_cart(
+        user_id: int = Path(..., ge=0),
+        db: AsyncSession = Depends(get_db),
+):
+    stmt = select(CartModel).where(CartModel.user_id == user_id)
+    result = await db.execute(stmt)
+    cart = result.scalars().first()
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"You do not have shopping cart yet."
+        )
+    return ResponseShoppingCartSchema.model_validate(
+        cart, from_attributes=True)
+
+
+@router.get(
     "/items/",
     response_model=ResponseShoppingCartSchema,
     summary="List movie in shopping cart",
@@ -185,12 +223,11 @@ async def remove_movie_from_cart(
     status_code=200
 )
 async def list_items_in_cart(
-    token_payload: AccessTokenPayload = Depends(
-        get_required_access_token_payload
-    ),
-    db: AsyncSession = Depends(get_db),
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload
+        ),
+        db: AsyncSession = Depends(get_db),
 ):
-
     user_id = token_payload["user_id"]
     stmt = select(CartModel).where(CartModel.user_id == user_id)
     result = await db.execute(stmt)
@@ -233,12 +270,11 @@ async def list_items_in_cart(
     status_code=200
 )
 async def clear_shopping_cart(
-    token_payload: AccessTokenPayload = Depends(
-        get_required_access_token_payload
-    ),
-    db: AsyncSession = Depends(get_db),
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload
+        ),
+        db: AsyncSession = Depends(get_db),
 ):
-
     user_id = token_payload["user_id"]
 
     stmt = select(CartModel).where(CartModel.user_id == user_id)
@@ -256,4 +292,3 @@ async def clear_shopping_cart(
     return MessageResponseSchema(
         detail="Shopping cart has been cleared successfully."
     )
-

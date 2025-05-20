@@ -36,7 +36,7 @@ from schemas import (
 )
 from security.http import get_token_or_none, get_optional_auth_token
 from security.interfaces import JWTAuthManagerInterface
-from .permissions import is_any_group, is_admin_group
+from .permissions import is_any_group, is_admin
 
 router = APIRouter()
 
@@ -925,7 +925,7 @@ async def change_password(
 
 @router.patch(
     "/users/{user_id}/group/",
-    dependencies=[Depends(is_admin_group)],
+    dependencies=[Depends(is_admin)],
     response_model=MessageResponseSchema,
     summary="Request to change user group.",
     description="Change a user's group, providing admin access token.",
