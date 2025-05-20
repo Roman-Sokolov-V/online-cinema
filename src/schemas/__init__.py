@@ -38,3 +38,4 @@ from schemas.opinions import (
     ReplySchema,
     ResponseReplySchema
 )
+from schemas.shopping_cart import ResponseShoppingCartSchema

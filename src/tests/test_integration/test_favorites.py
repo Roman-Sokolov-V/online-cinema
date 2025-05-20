@@ -6,18 +6,6 @@ from database import MovieModel, UserModel
 Base_URL = "/api/v1/opinions/movies/favorite/"
 
 
-async def get_movie(session):
-    first_id_stmt = select(MovieModel.id).limit(1)
-    first_id_result = await session.execute(first_id_stmt)
-    first_id = first_id_result.scalar_one()
-
-    stmt = select(MovieModel).where(MovieModel.id == first_id).options(
-        joinedload(MovieModel.users_like))
-    result = await session.execute(stmt)
-    movie = result.scalars().first()
-    return movie
-
-
 async def get_user_and_header(session, data):
     header = {"Authorization": f"Bearer {data['access_token']}"}
     stmt = select(UserModel).where(
@@ -29,14 +17,18 @@ async def get_user_and_header(session, data):
 
 
 @pytest.mark.asyncio
-async def test_add_movie_to_favorite_successfully(client, db_session,
-                                                  seed_database,
-                                                  create_activate_login_user):
+async def test_add_movie_to_favorite_successfully(
+        client,
+        db_session,
+        seed_database,
+        create_activate_login_user,
+        get_movie
+):
     user_data = await create_activate_login_user(group_name="user")
-    user, header = await get_user_and_header(session=db_session,
-                                             data=user_data)
-    movie = await get_movie(session=db_session)
-
+    user, header = await get_user_and_header(
+        session=db_session, data=user_data
+    )
+    movie = get_movie
     assert movie is not None, "Should be movie in db"
     response = await client.post(Base_URL + f"{movie.id}/", headers=header)
 
@@ -70,13 +62,17 @@ async def test_add_not_existing_movie(client, db_session,
 
 
 @pytest.mark.asyncio
-async def test_add_movie_that_already_in_favorite(client, db_session,
-                                                  seed_database,
-                                                  create_activate_login_user):
+async def test_add_movie_that_already_in_favorite(
+        client,
+        db_session,
+        seed_database,
+        create_activate_login_user,
+        get_movie
+):
     user_data = await create_activate_login_user(group_name="user")
     user, header = await get_user_and_header(session=db_session,
                                              data=user_data)
-    movie = await get_movie(session=db_session)
+    movie = get_movie
     assert movie is not None, "Should be movie in db"
     user.favorite_movies.append(movie)
     await db_session.commit()
@@ -90,13 +86,17 @@ async def test_add_movie_that_already_in_favorite(client, db_session,
 
 
 @pytest.mark.asyncio
-async def test_remove_movie_from_favorite_success(client, db_session,
-                                                  seed_database,
-                                                  create_activate_login_user):
+async def test_remove_movie_from_favorite_success(
+        client,
+        db_session,
+        seed_database,
+        create_activate_login_user,
+        get_movie
+):
     user_data = await create_activate_login_user(group_name="user")
     user, header = await get_user_and_header(session=db_session,
                                              data=user_data)
-    movie = await get_movie(session=db_session)
+    movie = get_movie
     assert movie is not None, "Should be movie in db"
     response = await client.post(Base_URL + f"{movie.id}/", headers=header)
     assert response.status_code == 201, "Expected 201 Created"
@@ -117,12 +117,13 @@ async def test_remove_movie_from_favorite_list_that_not_in_list(
         client,
         db_session,
         seed_database,
-        create_activate_login_user
+        create_activate_login_user,
+        get_movie
 ):
     user_data = await create_activate_login_user(group_name="user")
     user, header = await get_user_and_header(session=db_session,
                                              data=user_data)
-    movie = await get_movie(session=db_session)
+    movie = get_movie
 
     response = await client.delete(Base_URL + f"{movie.id}/", headers=header)
     assert response.status_code == 400, "Expected 400"

@@ -12,7 +12,7 @@ from .movies import MovieModel
 class CartItemModel(Base):
     __tablename__ = 'cart_items'
     __table_args__ = (
-        UniqueConstraint("cart_id", "product_id", name="uix_cart_product"),
+        UniqueConstraint("cart_id", "movie_id", name="uix_cart_product"),
     )
 
     id: Mapped[int] = mapped_column(
@@ -27,8 +27,10 @@ class CartItemModel(Base):
     added_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, nullable=False
     )
-    # розкоментувати якщо буде необхідний зв'язок
-    # movie: Mapped["MovieModel"] = relationship("MovieModel", lazy="joined")
+    movie: Mapped["MovieModel"] = relationship("MovieModel", lazy="joined")
+
+    def __repr__(self):
+        return f"<CartItemModel(id={self.id}, cart_id={self.cart_id}, movie_id={self.movie_id})>"
 
 
 class CartModel(Base):
@@ -62,8 +64,13 @@ class PurchaseModel(Base):
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, auto_increment=True
     )
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    movie_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id"), nullable=False
+    )
+    movie_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('movies.id'), nullable=False
+    )
     purchase_date: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, nullable=False
     )
