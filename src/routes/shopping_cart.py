@@ -97,6 +97,72 @@ async def add_movie_to_cart(
     return ResponseShoppingCartSchema.model_validate(cart, from_attributes=True)
 
 
+@router.delete(
+    "/items/{movie_id}/",
+    response_model=ResponseShoppingCartSchema,
+    summary="Remove movie from shopping cart",
+    description=("Remove the movie from the cart according"
+                 " to the movie ID provided."),
+    responses={
+        404: {
+            "description": "Movie not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie with the given ID was not found."}
+                }
+            },
+        },
+        400: {
+            "description": "Movie not exists in shopping cart",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie not exists in shopping cart"
+                    },
+                }
+            },
+        },
+
+    },
+    status_code=200
+)
+async def remove_movie_from_cart(
+    movie_id: int = Path(..., ge=0),
+    token_payload: AccessTokenPayload = Depends(
+        get_required_access_token_payload
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    movie = await db.get(MovieModel, movie_id)
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Movie with the ID provided does not exist."
+        )
+    user_id = token_payload["user_id"]
+
+    stmt = select(CartModel).where(CartModel.user_id == user_id)
+    result = await db.execute(stmt)
+    cart = result.scalars().first()
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"You do not have shopping cart yet."
+        )
+    for item in cart.cart_items:
+        if item.movie_id == movie_id:
+            await db.delete(item)
+            await db.commit()
+            await db.refresh(cart, attribute_names=["cart_items"])
+            return ResponseShoppingCartSchema.model_validate(
+                cart, from_attributes=True)
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=f"Movie not exists in shopping cart."
+    )
+
+
 
 
 

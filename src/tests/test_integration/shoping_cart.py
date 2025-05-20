@@ -145,3 +145,71 @@ async def test_add_already_purchased_movie_to_cart(
     assert response.json().get(
         "detail") == "You already purchased this movie."
 
+
+@pytest.mark.asyncio
+async def test_remove_movie_from_cart_success(
+        client,
+        db_session,
+        seed_database,
+        create_activate_login_user,
+        get_movie
+):
+    user_data = await create_activate_login_user()
+    user = user_data.get("user")
+    header = {"Authorization": f"Bearer {user_data['access_token']}"}
+    movie = get_movie
+    response = await client.post(BASE_URL + f"items/{movie.id}/",
+                                 headers=header)
+    assert response.status_code == 200
+
+    response = await client.delete(
+        BASE_URL + f"items/{movie.id}/", headers=header
+    )
+    assert response.status_code == 200
+    stmt = select(CartModel).where(CartModel.user_id == user.id)
+    result = await db_session.execute(stmt)
+    exists_cart_db = result.scalars().first()
+    assert movie.id not in (item.movie_id for item in exists_cart_db.cart_items), "Movie should not be in cart"
+
+
+async def test_remove_movie_that_not_exists_in_cart(
+        client,
+        db_session,
+        seed_database,
+        create_activate_login_user,
+        get_3_movies
+):
+    user_data = await create_activate_login_user()
+    user = user_data.get("user")
+    header = {"Authorization": f"Bearer {user_data['access_token']}"}
+    movie_1, movie_2, _ = get_3_movies
+    response = await client.post(BASE_URL + f"items/{movie_1.id}/",
+                                 headers=header)
+    assert response.status_code == 200
+
+    response = await client.delete(
+        BASE_URL + f"items/{movie_2.id}/", headers=header
+    )
+    assert response.status_code == 400
+    assert response.json().get("detail") == "Movie not exists in shopping cart."
+
+
+async def test_remove_movie_that_not_exists_in_db(
+        client,
+        db_session,
+        seed_database,
+        create_activate_login_user,
+        get_movie
+):
+    user_data = await create_activate_login_user()
+    header = {"Authorization": f"Bearer {user_data['access_token']}"}
+    movie = get_movie
+    response = await client.post(BASE_URL + f"items/{movie.id}/",
+                                 headers=header)
+    assert response.status_code == 200
+
+    response = await client.delete(
+        BASE_URL + f"items/{100000}/", headers=header
+    )
+    assert response.status_code == 404
+    assert response.json().get("detail") == "Movie with the ID provided does not exist."
