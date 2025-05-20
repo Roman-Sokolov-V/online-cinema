@@ -167,8 +167,9 @@ async def test_remove_movie_from_cart_success(
     stmt = select(CartModel).where(CartModel.user_id == user.id)
     result = await db_session.execute(stmt)
     exists_cart_db = result.scalars().first()
-    assert movie.id not in (item.movie_id for item in
-                            exists_cart_db.cart_items), "Movie should not be in cart"
+    assert movie.id not in (
+        item.movie_id for item in exists_cart_db.cart_items
+    ), "Movie should not be in cart"
 
 
 async def test_remove_movie_that_not_exists_in_cart(
@@ -243,6 +244,55 @@ async def test_list_cart_items_if_cart_not_exists(
     header = {"Authorization": f"Bearer {user_data['access_token']}"}
 
     response = await client.get(BASE_URL + f"items/", headers=header)
+    assert response.status_code == 404
+    assert response.json().get(
+        "detail") == "You do not have shopping cart yet."
+
+
+@pytest.mark.asyncio
+async def test_clear_cart_success(
+        client,
+        db_session,
+        seed_database,
+        create_activate_login_user,
+        get_3_movies
+):
+    user_data = await create_activate_login_user()
+    user = user_data.get("user")
+    header = {"Authorization": f"Bearer {user_data['access_token']}"}
+    movies = get_3_movies
+    for movie in movies:
+        response = await client.post(BASE_URL + f"items/{movie.id}/",
+                                     headers=header)
+        assert response.status_code == 200
+
+    response = await client.delete(
+        BASE_URL + f"items/", headers=header
+    )
+    assert response.status_code == 200
+    assert response.json().get(
+        "detail") == "Shopping cart has been cleared successfully."
+    stmt = select(CartModel).where(CartModel.user_id == user.id)
+    result = await db_session.execute(stmt)
+    exists_cart_db = result.scalars().first()
+    assert exists_cart_db.cart_items == [], "Cart should be empty"
+
+
+@pytest.mark.asyncio
+async def test_clear_not_exists_cart(
+        client,
+        db_session,
+        seed_database,
+        create_activate_login_user,
+        get_3_movies
+):
+    user_data = await create_activate_login_user()
+    user = user_data.get("user")
+    header = {"Authorization": f"Bearer {user_data['access_token']}"}
+
+    response = await client.delete(
+        BASE_URL + f"items/", headers=header
+    )
     assert response.status_code == 404
     assert response.json().get(
         "detail") == "You do not have shopping cart yet."

@@ -2,13 +2,17 @@ from http.client import HTTPException
 
 from fastapi import APIRouter, Depends, Path, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from database.models.shopping_cart import PurchaseModel
 from routes.utils import get_required_access_token_payload
 
 from database import get_db, MovieModel, CartModel, CartItemModel
-from schemas import AccessTokenPayload, ResponseShoppingCartSchema
+from schemas import (
+    AccessTokenPayload,
+    ResponseShoppingCartSchema,
+    MessageResponseSchema
+)
 
 router = APIRouter()
 
@@ -166,9 +170,8 @@ async def remove_movie_from_cart(
 @router.get(
     "/items/",
     response_model=ResponseShoppingCartSchema,
-    summary="Remove movie from shopping cart",
-    description=("Remove the movie from the cart according"
-                 " to the movie ID provided."),
+    summary="List movie in shopping cart",
+    description="List movie in shopping cart",
     responses={
         404: {
             "description": "Shopping cart not exists",
@@ -201,6 +204,56 @@ async def list_items_in_cart(
         cart, from_attributes=True)
 
 
+@router.delete(
+    "/items/",
+    response_model=MessageResponseSchema,
+    summary="Clear shopping cart",
+    description="Remove all items from shopping cart.",
+    responses={
+        200: {
+            "description": "Cart cleared successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Shopping cart has been cleared successfully."
+                    }
+                },
+            },
+        },
+        404: {
+            "description": "Shopping cart not exists",
+            "content": {
+                "application/json": {
+                    "example": "You do not have shopping cart yet."
+                }
+            },
+        },
 
+    },
+    status_code=200
+)
+async def clear_shopping_cart(
+    token_payload: AccessTokenPayload = Depends(
+        get_required_access_token_payload
+    ),
+    db: AsyncSession = Depends(get_db),
+):
 
+    user_id = token_payload["user_id"]
+
+    stmt = select(CartModel).where(CartModel.user_id == user_id)
+    result = await db.execute(stmt)
+    cart = result.scalars().first()
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"You do not have shopping cart yet."
+        )
+    await db.execute(
+        delete(CartItemModel).where(CartItemModel.cart_id == cart.id)
+    )
+    await db.commit()
+    return MessageResponseSchema(
+        detail="Shopping cart has been cleared successfully."
+    )
 
