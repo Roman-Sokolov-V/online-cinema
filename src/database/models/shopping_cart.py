@@ -19,10 +19,12 @@ class CartItemModel(Base):
         Integer, primary_key=True, auto_increment=True
     )
     cart_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('shopping_cart.id'), nullable=False
+        Integer, ForeignKey('shopping_cart.id', ondelete='CASCADE'),
+        nullable=False
     )
     movie_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('movies.id'), nullable=False
+        Integer, ForeignKey('movies.id', ondelete="CASCADE"),
+        nullable=False
     )
     added_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, nullable=False
@@ -50,7 +52,7 @@ class CartModel(Base):
     )
     cart_items: Mapped[List[CartItemModel]] = relationship(
         CartItemModel,
-        backref="cart", lazy="joined", cascade="all, delete-orphan"
+        backref="cart", lazy="joined", passive_deletes=True
     )
 
 
@@ -66,7 +68,7 @@ class PurchaseModel(Base):
     )
     user_id: Mapped[int] = mapped_column(
         Integer,
-        ForeignKey("users.id"), nullable=False
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
     )
     movie_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('movies.id'), nullable=False
