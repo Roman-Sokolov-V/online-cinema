@@ -16,7 +16,7 @@ class CartItemModel(Base):
     )
 
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, auto_increment=True
+        Integer, primary_key=True, autoincrement=True
     )
     cart_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('shopping_cart.id', ondelete='CASCADE'),
@@ -39,7 +39,7 @@ class CartModel(Base):
     __tablename__ = "shopping_cart"
 
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, auto_increment=True
+        Integer, primary_key=True, autoincrement=True
     )
     user_id: Mapped[int] = mapped_column(
         Integer,
@@ -64,7 +64,7 @@ class PurchaseModel(Base):
         ),
     )
     id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, auto_increment=True
+        Integer, primary_key=True, autoincrement=True
     )
     user_id: Mapped[int] = mapped_column(
         Integer,
