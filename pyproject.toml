@@ -5,7 +5,7 @@ description = "Online cinema portfolio project"
 authors = ["Yurii Okal <yurii.okal@mate.com>", "Roman Sokolov <gnonasis@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.12"
 fastapi = "^0.115.6"
 sqlalchemy = "^2.0.36"
 pytest = "^8.3.4"
@@ -37,8 +37,13 @@ pytest-asyncio = "^0.25.3"
 gunicorn = "^23.0.0"
 redis = "^5.2.1"
 celery = "^5.5.1"
+mypy = "^1.15.0"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = ["src"]
