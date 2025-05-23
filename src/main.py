@@ -9,6 +9,7 @@ from routes import (
     actors_router,
     favorites_router,
     shopping_cart_router,
+    orders_router
 )
 
 app = FastAPI(
@@ -38,4 +39,5 @@ app.include_router(genres_router, prefix=f"{api_version_prefix}/theater", tags=[
 app.include_router(actors_router, prefix=f"{api_version_prefix}/theater", tags=["actors"])
 app.include_router(favorites_router, prefix=f"{api_version_prefix}/opinions", tags=["opinions"])
 app.include_router(shopping_cart_router, prefix=f"{api_version_prefix}/cart", tags=["cart"])
+app.include_router(orders_router, prefix=f"{api_version_prefix}/orders", tags=["order"])
 

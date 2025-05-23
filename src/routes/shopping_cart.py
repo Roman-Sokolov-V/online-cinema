@@ -1,4 +1,4 @@
-from http.client import HTTPException
+from typing import Any
 
 from fastapi import APIRouter, Depends, Path, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,7 +70,8 @@ async def add_movie_to_cart(
         )
     user_id = token_payload["user_id"]
 
-    stmt = select(PurchaseModel.id).where(
+
+    stmt: Any = select(PurchaseModel.id).where(
         (PurchaseModel.movie_id == movie_id) &
         (PurchaseModel.user_id == user_id)
     )

@@ -14,7 +14,13 @@ from sqlalchemy.orm import mapped_column, Mapped, relationship
 from database import Base
 from database.models.associations import FavoriteModel
 from database.models.opinions import CommentModel
+#from database.models.shopping_cart import CartItemModel
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .accounts import UserModel
+    from .shopping_cart import CartItemModel
 
 MoviesGenresModel = Table(
     "movies_genres",
@@ -156,6 +162,12 @@ class MovieModel(Base):
         secondary=FavoriteModel,
         back_populates="favorite_movies"
     )
+    cart_items: Mapped[list["CartItemModel"]] = relationship(
+        back_populates="movie",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
     __table_args__ = (
         UniqueConstraint(
             "name", "year", "time", name="unique_movie_constraint"

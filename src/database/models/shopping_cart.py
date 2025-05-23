@@ -5,8 +5,8 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import ForeignKey, Integer, DateTime, UniqueConstraint
 
 from database import Base
-from .accounts import UserModel
-from .movies import MovieModel
+from database.models.accounts import UserModel
+from database.models.movies import MovieModel
 
 
 class CartItemModel(Base):
@@ -31,7 +31,11 @@ class CartItemModel(Base):
         default=lambda: datetime.now(UTC),
         nullable=False
     )
-    movie: Mapped["MovieModel"] = relationship("MovieModel", lazy="joined")
+    movie: Mapped["MovieModel"] = relationship(
+        "MovieModel",
+        back_populates="cart_items",
+        lazy="joined"
+    )
 
     def __repr__(self):
         return f"<CartItemModel(id={self.id}, cart_id={self.cart_id}, movie_id={self.movie_id})>"

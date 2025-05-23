@@ -44,7 +44,7 @@ class OrderItemModel(Base):
     price_at_order: Mapped[Decimal] = mapped_column(
         DECIMAL(precision=10, scale=2), nullable=False
     )
-    movie: Mapped["MovieModel"] = relationship("MovieModel", lazy="joined")
+    movie: Mapped["MovieModel"] = relationship("MovieModel")
 
     def __repr__(self):
         return f"<OrderItemModel(id={self.id}, order_id={self.order_id}, movie_id={self.movie_id})>"

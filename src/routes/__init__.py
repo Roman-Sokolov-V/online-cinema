@@ -5,3 +5,4 @@ from routes.genres import router as genres_router
 from routes.actors import router as actors_router
 from routes.opinions import router as favorites_router
 from routes.shopping_cart import router as shopping_cart_router
+from routes.orders import router as orders_router
