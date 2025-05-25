@@ -11,3 +11,7 @@ create_order_example_schema = {
               "with the following IDs: [789] have not been added to the order "
               "because they are already in your other orders awaiting payment."
 }
+
+response_list_orders_example_schema = {
+    "orders": [create_order_example_schema],
+}

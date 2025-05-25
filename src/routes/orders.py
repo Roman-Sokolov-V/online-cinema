@@ -1,10 +1,11 @@
-from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any, Annotated
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, delete
+from sqlalchemy.orm import joinedload
 
-
+from routes.crud.orders import get_orders_stmt
 from routes.utils import get_required_access_token_payload
 
 from database import (
@@ -14,12 +15,13 @@ from database import (
     CartItemModel,
     OrderModel,
     OrderItemModel,
-    StatusEnum
+    StatusEnum, UserModel, UserGroupModel
 )
 from schemas import (
     AccessTokenPayload,
     CreateOrderSchema
 )
+from schemas.orders import ResponseListOrdersSchema, FilterParams, OrderSchema
 
 router = APIRouter()
 
@@ -113,7 +115,8 @@ async def place_order(
                 price_at_order=movie.price
             )
             db.add(order_item)
-        await db.execute(delete(CartItemModel).where(CartItemModel.cart_id == cart.id))
+        await db.execute(
+            delete(CartItemModel).where(CartItemModel.cart_id == cart.id))
         await db.commit()
     except IntegrityError as e:
         await db.rollback()
@@ -130,6 +133,7 @@ async def place_order(
             f"other orders awaiting payment."
         )
     titles = [movie.name for movie in movies_for_ordering]
+    await db.refresh(order)
     response = CreateOrderSchema(
         id=order.id,
         created_at=order.created_at,
@@ -140,45 +144,69 @@ async def place_order(
     )
     return response
 
-#
-#
-#
-# @router.get(
-#     "/items/",
-#     response_model=ResponseShoppingCartSchema,
-#     summary="List movie in shopping cart",
-#     description="List movie in shopping cart",
-#     responses={
-#         404: {
-#             "description": "Shopping cart not exists",
-#             "content": {
-#                 "application/json": {
-#                     "example": "You do not have shopping cart yet."
-#                 }
-#             },
-#         },
-#     },
-#     status_code=200
-# )
-# async def list_items_in_cart(
-#         token_payload: AccessTokenPayload = Depends(
-#             get_required_access_token_payload
-#         ),
-#         db: AsyncSession = Depends(get_db),
-# ):
-#     user_id = token_payload["user_id"]
-#     stmt = select(CartModel).where(CartModel.user_id == user_id)
-#     result = await db.execute(stmt)
-#     cart = result.scalars().first()
-#     if not cart:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND,
-#             detail=f"You do not have shopping cart yet."
-#         )
-#     return ResponseShoppingCartSchema.model_validate(
-#         cart, from_attributes=True)
-#
-#
+
+@router.get(
+    "/list/",
+    response_model=ResponseListOrdersSchema,
+    summary="List orders",
+    description=(
+            "This endpoint can be used by both regular users and admins. "
+            "If a regular user provides the 'user_id' query parameter, it will"
+            " be automatically overridden with the ID of the authenticated"
+            " user."
+    ),
+    status_code=200
+)
+async def list_orders(
+        filtered_query: Annotated[FilterParams, Query()],
+        token_payload: AccessTokenPayload = Depends(
+            get_required_access_token_payload
+        ),
+        db: AsyncSession = Depends(get_db),
+) -> ResponseListOrdersSchema:
+    request_user_id = token_payload["user_id"]
+    stmt = (
+        select(UserGroupModel.name)
+        .join(UserModel.group)
+        .where(UserModel.id == request_user_id)
+    )
+    result = await db.execute(stmt)
+    request_user_group_name = result.scalars().first()
+    if request_user_group_name != "admin":
+        # Ігноруємо user_id з query для звичайного користувача,
+        # використовуємо значення з токена
+        filtered_query.user_id = request_user_id
+    stmt_orders = get_orders_stmt(filtered_query)
+    result_orders = await db.execute(stmt_orders)
+    orders = result_orders.scalars().all()
+    response = ResponseListOrdersSchema(
+        orders=[
+            OrderSchema(
+                id=order.id,
+                created_at=order.created_at,
+                movies=[item.movie.name for item in order.order_items],
+                total_amount=order.total_amount,
+                status=order.status
+            )
+            for order in orders
+        ],
+    )
+
+    return response
+
+
+
+    # stmt = select(CartModel).where(CartModel.user_id == user_id)
+    # result = await db.execute(stmt)
+    # cart = result.scalars().first()
+    # if not cart:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         detail=f"You do not have shopping cart yet."
+    #     )
+    # return ResponseShoppingCartSchema.model_validate(
+    #     cart, from_attributes=True)
+
 # @router.delete(
 #     "/items/",
 #     response_model=MessageResponseSchema,

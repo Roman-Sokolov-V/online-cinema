@@ -1,18 +1,22 @@
 from datetime import datetime
 from decimal import Decimal
-from pydantic import BaseModel
+from typing import Optional
 
-from database import StatusEnum, MovieModel
-from schemas.examples.orders import create_order_example_schema
+from pydantic import BaseModel, Field, model_validator
 
+from database import StatusEnum
+from schemas.examples.orders import (
+    create_order_example_schema,
+    response_list_orders_example_schema
+)
 
 
 class OrderSchema(BaseModel):
     id: int
     created_at: datetime
-    movies: list[str]
     total_amount: Decimal
     status: StatusEnum
+    movies: list[str]
 
 
 class CreateOrderSchema(OrderSchema):
@@ -25,3 +29,35 @@ class CreateOrderSchema(OrderSchema):
             ]
         }
     }
+
+
+class ResponseListOrdersSchema(BaseModel):
+    orders: list[OrderSchema]
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                response_list_orders_example_schema,
+            ]
+        }
+    }
+
+
+class FilterParams(BaseModel):
+    limit: int = Field(10, gt=0, le=100)
+    offset: int = Field(0, ge=0)
+    user_id: Optional[int] = Field(None, gt=0)
+    date_from: Optional[datetime] = Field(None)
+    date_to: Optional[datetime] = Field(None)
+    status: Optional[StatusEnum] = Field(
+        None,
+        description="Order status: pending, paid, or canceled",
+    )
+
+    @model_validator(mode="after")
+    def check_date_range(self) -> "FilterParams":
+        if self.date_from and self.date_to:
+            if self.date_from > self.date_to:
+                raise ValueError(
+                    "`date_from` must be before or equal to `date_to`.")
+        return self

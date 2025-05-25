@@ -433,3 +433,27 @@ async def get_3_movies(db_session):
     result = await db_session.execute(stmt)
     movies = result.scalars().all()
     return movies
+
+
+
+@pytest_asyncio.fixture
+async def create_orders(get_3_movies, client, create_activate_login_user):
+    from tests.test_integration.test_orders import BASE_URL
+    movies = get_3_movies
+    prefix = 1
+
+    # create 3 orders for 3 users with 3 movies
+    users_data = dict()
+    for movie in movies:
+        user_data = await create_activate_login_user(prefix=str(prefix))
+        user = user_data["user"]
+        header = {"Authorization": f"Bearer {user_data['access_token']}"}
+        users_data["user" + str(prefix)] = (user, header)
+
+        response = await client.post(
+            f"/api/v1/cart/items/{movie.id}/", headers=header)
+        assert response.status_code == 200
+        response = await client.post(BASE_URL + "place/", headers=header)
+        assert response.status_code == 201
+        prefix += 1
+    return {"users_data": users_data, "movies": movies}
