@@ -1,16 +1,16 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import ForeignKey, Integer, DateTime, func, UniqueConstraint
+from sqlalchemy import ForeignKey, Integer, DateTime, UniqueConstraint
 
 from database import Base
-from .accounts import UserModel
-from .movies import MovieModel
+from database.models.accounts import UserModel
+from database.models.movies import MovieModel
 
 
 class CartItemModel(Base):
-    __tablename__ = 'cart_items'
+    __tablename__ = "cart_items"
     __table_args__ = (
         UniqueConstraint("cart_id", "movie_id", name="uix_cart_product"),
     )
@@ -19,17 +19,23 @@ class CartItemModel(Base):
         Integer, primary_key=True, autoincrement=True
     )
     cart_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('shopping_cart.id', ondelete='CASCADE'),
+        Integer, ForeignKey("shopping_cart.id", ondelete="CASCADE"),
         nullable=False
     )
     movie_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('movies.id', ondelete="CASCADE"),
+        Integer, ForeignKey("movies.id", ondelete="CASCADE"),
         nullable=False
     )
     added_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now, nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
     )
-    movie: Mapped["MovieModel"] = relationship("MovieModel", lazy="joined")
+    movie: Mapped["MovieModel"] = relationship(
+        "MovieModel",
+        back_populates="cart_items",
+        lazy="joined"
+    )
 
     def __repr__(self):
         return f"<CartItemModel(id={self.id}, cart_id={self.cart_id}, movie_id={self.movie_id})>"
@@ -74,7 +80,9 @@ class PurchaseModel(Base):
         Integer, ForeignKey('movies.id'), nullable=False
     )
     purchase_date: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now, nullable=False
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False
     )
     user: Mapped[UserModel] = relationship(
         UserModel, backref="purchases", lazy="joined"

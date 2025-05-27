@@ -10,7 +10,7 @@ from fastapi import Depends, status, HTTPException
 def get_access_token_payload(
         token: str = Depends(get_auth_token),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
-) -> AccessTokenPayload:
+) -> dict:
     try:
         token_payload = jwt_manager.decode_access_token(token)
     except InvalidTokenError:
@@ -29,12 +29,12 @@ def get_access_token_payload(
 def get_optional_access_token_payload(
         token: str = Depends(get_optional_auth_token),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
-) -> AccessTokenPayload:
+) -> dict:
     return get_access_token_payload(token=token, jwt_manager=jwt_manager)
 
 
 def get_required_access_token_payload(
         token: str = Depends(get_auth_token),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
-) -> AccessTokenPayload:
+) -> dict:
     return get_access_token_payload(token=token, jwt_manager=jwt_manager)

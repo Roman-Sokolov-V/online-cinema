@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import cast
+from typing import cast, Any
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, delete
@@ -36,7 +36,7 @@ from schemas import (
 )
 from security.http import get_token_or_none, get_optional_auth_token
 from security.interfaces import JWTAuthManagerInterface
-from .permissions import is_any_group, is_admin
+from routes.permissions import is_any_group, is_admin
 
 router = APIRouter()
 
@@ -99,7 +99,7 @@ async def register_user(
             - 409 Conflict if a user with the same email exists.
             - 500 Internal Server Error if an error occurs during user creation.
     """
-    stmt = select(UserModel).where(UserModel.email == user_data.email)
+    stmt: Any = select(UserModel).where(UserModel.email == user_data.email)
     result = await db.execute(stmt)
     existing_user = result.scalars().first()
     if existing_user:
@@ -186,7 +186,7 @@ async def send_new_activation_token(
         email_sender: EmailSenderInterface = Depends(
             get_accounts_email_notificator),
 ) -> UserRegistrationResponseSchema:
-    stmt = select(UserModel).where(UserModel.email == user_data.email)
+    stmt: Any = select(UserModel).where(UserModel.email == user_data.email)
     result = await db.execute(stmt)
     existing_user = result.scalars().first()
 
@@ -315,7 +315,7 @@ async def activate_account(
                 detail=str(e)
             )
 
-        stmt = select(UserModel).where(
+        stmt: Any = select(UserModel).where(
             UserModel.id == request_user_id).options(
             joinedload(UserModel.group))
         result = await db.execute(stmt)
@@ -335,6 +335,11 @@ async def activate_account(
         )
         result = await db.execute(stmt)
         user = result.scalars().first()
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User does not exist."
+            )
         user.is_active = True
         activation_token = user.activation_token
         await db.delete(activation_token)
@@ -515,7 +520,7 @@ async def reset_password(
             - 400 Bad Request if the email or token is invalid, or the token has expired.
             - 500 Internal Server Error if an error occurs during the password reset process.
     """
-    stmt = select(UserModel).filter_by(email=data.email)
+    stmt: Any = select(UserModel).filter_by(email=data.email)
     result = await db.execute(stmt)
     user = result.scalars().first()
     if not user or not user.is_active:
@@ -751,7 +756,7 @@ async def refresh_access_token(
             detail=str(error),
         )
 
-    stmt = select(RefreshTokenModel).filter_by(token=token_data.refresh_token)
+    stmt: Any = select(RefreshTokenModel).filter_by(token=token_data.refresh_token)
     result = await db.execute(stmt)
     refresh_token_record = result.scalars().first()
     if not refresh_token_record:
@@ -895,7 +900,7 @@ async def change_password(
             - 500 Internal Server Error if an error occurs during the password reset process.
     """
 
-    stmt = select(UserModel).filter_by(email=data.email)
+    stmt: Any = select(UserModel).filter_by(email=data.email)
     result = await db.execute(stmt)
     user = result.scalars().first()
 
@@ -986,7 +991,7 @@ async def change_user_group(
     #         - 500 Internal Server Error if an error occurs during the password reset process.
     """
 
-    stmt = (select(UserModel).filter_by(id=user_id))
+    stmt:Any = (select(UserModel).filter_by(id=user_id))
     result = await db.execute(stmt)
     user = result.scalars().first()
 

@@ -50,10 +50,16 @@ class GenderEnum(str, enum.Enum):
 class UserGroupModel(Base):
     __tablename__ = "user_groups"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[UserGroupEnum] = mapped_column(Enum(UserGroupEnum), nullable=False, unique=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
+    name: Mapped[UserGroupEnum] = mapped_column(
+        Enum(UserGroupEnum), nullable=False, unique=True
+    )
 
-    users: Mapped[List["UserModel"]] = relationship("UserModel", back_populates="group")
+    users: Mapped[List["UserModel"]] = relationship(
+        "UserModel", back_populates="group"
+    )
 
     def __repr__(self):
         return f"<UserGroupModel(id={self.id}, name={self.name})>"

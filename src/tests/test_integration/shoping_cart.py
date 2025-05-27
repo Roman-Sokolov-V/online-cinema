@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import select
 
-from database import CartModel, CartItemModel, PurchaseModel
+from database import CartModel, PurchaseModel
 
 BASE_URL = "/api/v1/cart/"
 
