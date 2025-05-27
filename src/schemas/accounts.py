@@ -76,7 +76,7 @@ class UserActivationRequestSchema(BaseModel):
 
 
 class MessageResponseSchema(BaseModel):
-    message: str
+    detail: str
 
 
 class TokenRefreshRequestSchema(BaseModel):

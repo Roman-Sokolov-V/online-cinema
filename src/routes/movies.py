@@ -7,16 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from database import (
-    get_db, MovieModel, StarModel, DirectorModel, CertificationModel
+    get_db,
+    MovieModel,
+    StarModel,
+    DirectorModel,
+    CertificationModel,
+    GenreModel,
+    CartItemModel
 )
-from database import GenreModel
 from routes.filters import apply_m2m_filter
 from routes.permissions import is_moderator_or_admin
 from schemas import (
     MovieListResponseSchema,
     MovieDetailSchema,
     MovieUpdateSchema,
-    MovieCreateSchema
+    MovieCreateSchema, MessageResponseSchema
 )
 
 
@@ -450,6 +455,7 @@ async def get_movie_by_id(
 @router.delete(
     "/movies/{movie_id}/",
     dependencies=[Depends(is_moderator_or_admin)],
+    response_model=MessageResponseSchema,
     summary="Delete a movie by ID",
     description=(
             "<h3>Delete a specific movie from the database by its unique ID.</h3>"
@@ -457,8 +463,16 @@ async def get_movie_by_id(
             "a 404 error will be returned.</p>"
     ),
     responses={
-        204: {
-            "description": "Movie deleted successfully."
+        200: {
+            "description": "Movie deleted successfully.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "no movie in carts": "Movie deleted successfully.",
+                        "movie in carts": "Movie deleted successfully. But it was found in the following shopping carts: [1, 12, 33]"
+                    }
+                }
+            },
         },
         404: {
             "description": "Movie not found.",
@@ -469,7 +483,7 @@ async def get_movie_by_id(
             },
         },
     },
-    status_code=204
+    status_code=200
 )
 async def delete_movie(
         movie_id: int,
@@ -489,7 +503,7 @@ async def delete_movie(
     :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
 
     :return: A response indicating the successful deletion of the movie.
-    :rtype: None
+    :rtype: MessageResponseSchema
     """
     stmt = select(MovieModel).where(MovieModel.id == movie_id)
     result = await db.execute(stmt)
@@ -500,11 +514,18 @@ async def delete_movie(
             status_code=404,
             detail="Movie with the given ID was not found."
         )
-
+    stmt = select(CartItemModel.cart_id).where(CartItemModel.movie_id == movie.id)
+    result = await db.execute(stmt)
+    cart_ids = result.scalars().all()
     await db.delete(movie)
     await db.commit()
 
-    return {"detail": "Movie deleted successfully."}
+    if cart_ids:
+        return MessageResponseSchema(
+            detail=f"Movie deleted successfully. But it was found in the following shopping carts: {cart_ids}"
+        )
+
+    return MessageResponseSchema(detail="Movie deleted successfully.")
 
 
 @router.patch(

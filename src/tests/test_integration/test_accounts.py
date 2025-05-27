@@ -189,7 +189,7 @@ async def test_activate_account_success_with_activation_token(
                                             json=activation_payload)
     assert activation_response.status_code == 200, "Expected status code 200 for successful activation."
     assert activation_response.json()[
-               "message"] == "User account activated successfully."
+               "detail"] == "User account activated successfully."
 
     stmt = (
         select(UserModel)
@@ -241,7 +241,7 @@ async def test_activate_account_success_with_admin_access_token(
     )
 
     assert response.status_code == 200, "Expected status code 200 for successful activation."
-    assert response.json()["message"] == "User account activated successfully."
+    assert response.json()["detail"] == "User account activated successfully."
 
     stmt = (
         select(UserModel)
@@ -578,7 +578,7 @@ async def test_request_password_reset_token_success(client, db_session,
         "/api/v1/accounts/password-reset/request/", json=reset_payload)
     assert reset_response.status_code == 200, "Expected status code 200 for successful token request."
     assert reset_response.json()[
-               "message"] == "If you are registered, you will receive an email with instructions.", \
+               "detail"] == "If you are registered, you will receive an email with instructions.", \
         "Expected success message for password reset token request."
 
     stmt_token = select(PasswordResetTokenModel).where(
@@ -610,7 +610,7 @@ async def test_request_password_reset_token_nonexistent_user(client,
         "/api/v1/accounts/password-reset/request/", json=reset_payload)
     assert reset_response.status_code == 200, "Expected status code 200 for non-existent user request."
     assert reset_response.json()[
-               "message"] == "If you are registered, you will receive an email with instructions.", (
+               "detail"] == "If you are registered, you will receive an email with instructions.", (
         "Expected generic success message for non-existent user request."
     )
 
@@ -650,7 +650,7 @@ async def test_request_password_reset_token_for_inactive_user(client,
         "/api/v1/accounts/password-reset/request/", json=reset_payload)
     assert reset_response.status_code == 200, "Expected status code 200 for inactive user password reset request."
     assert reset_response.json()[
-               "message"] == "If you are registered, you will receive an email with instructions.", (
+               "detail"] == "If you are registered, you will receive an email with instructions.", (
         "Expected generic success message for inactive user password reset request."
     )
 
@@ -725,7 +725,7 @@ async def test_reset_password_success(client, db_session, seed_user_groups):
         "/api/v1/accounts/reset-password/complete/", json=reset_payload)
     assert reset_response.status_code == 200, "Expected status code 200 for successful password reset."
     assert reset_response.json()[
-               "message"] == "Password reset successfully.", (
+               "detail"] == "Password reset successfully.", (
         "Unexpected response message for password reset."
     )
 

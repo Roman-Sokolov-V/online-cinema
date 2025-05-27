@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload, selectinload
 
-from database import MovieModel, CertificationModel
+from database import MovieModel, CertificationModel, CartModel
 from database import (
     GenreModel,
     StarModel,
@@ -843,9 +843,10 @@ async def test_permissions_to_create_movie(client, db_session, create_activate_l
     assert response.status_code == 201, f"Expected status code 201, but got {response.status_code}"
 
 
-###########################################################################
 @pytest.mark.asyncio
-async def test_permissions_delete_movie_by_all_user_groups(client, db_session, seed_database, create_activate_login_user):
+async def test_permissions_delete_movie_by_all_user_groups(
+        client, db_session, seed_database, create_activate_login_user
+):
     """
     Test that trying to delete a movie by users from  group: user, moderator, admin.
     User from user-group do not permissions to delete movie
@@ -880,11 +881,11 @@ async def test_permissions_delete_movie_by_all_user_groups(client, db_session, s
     response = await client.delete(
         f"/api/v1/theater/movies/{second_movie_id}/", headers=moderator_headers
     )
-    assert response.status_code == 204, f"Expected status code 204, but got {response.status_code}"
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
     response = await client.delete(
         f"/api/v1/theater/movies/{third_movie_id}/", headers=admin_headers
     )
-    assert response.status_code == 204, f"Expected status code 204, but got {response.status_code}"
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
     movie_1_from_db = await db_session.scalar(
         select(MovieModel).where(MovieModel.id == first_movie_id))
     movie_2_from_db = await db_session.scalar(
@@ -917,13 +918,14 @@ async def test_delete_movie_success(
     movie_id = movie.id
 
     response = await client.delete(f"/api/v1/theater/movies/{movie_id}/", headers=headers)
-    assert response.status_code == 204, f"Expected status code 204, but got {response.status_code}"
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+    assert response.json()["detail"] == "Movie deleted successfully."
 
     stmt_check = select(MovieModel).where(MovieModel.id == movie_id)
     result_check = await db_session.execute(stmt_check)
     deleted_movie = result_check.scalars().first()
     assert deleted_movie is None, f"Movie with ID {movie_id} was not deleted."
-#########################################################################################
+
 
 @pytest.mark.asyncio
 async def test_delete_movie_not_found(client, create_activate_login_user):
@@ -947,6 +949,66 @@ async def test_delete_movie_not_found(client, create_activate_login_user):
     assert response_data["detail"] == expected_detail, (
         f"Expected detail message: {expected_detail}, but got: {response_data['detail']}"
     )
+
+
+@pytest.mark.asyncio
+async def test_delete_movie_if_movie_in_cart(
+        client, db_session, seed_database, create_activate_login_user
+):
+    """
+    Test the `/movies/{movie_id}/` endpoint for successful movie deletion,
+    if movie exists in shopping cart
+    """
+    request_user_data = await create_activate_login_user("moderator")
+    user = request_user_data["user"]
+    headers = {"Authorization": f"Bearer {request_user_data['access_token']}"}
+
+    stmt = select(MovieModel).limit(1)
+    result = await db_session.execute(stmt)
+    movie = result.scalars().first()
+    assert movie is not None, "No movies found in the database to delete."
+    movie_id = movie.id
+
+    # add movie to cart
+    response = await client.post(
+        f"/api/v1/cart/items/{movie.id}/", headers=headers
+    )
+    assert response.status_code == 200
+    stmt = select(CartModel).where(CartModel.user_id == user.id)
+    result = await db_session.execute(stmt)
+    cart = result.scalars().first()
+    assert movie_id in (item.movie_id for item in cart.cart_items)
+
+    response = await client.delete(
+        f"/api/v1/theater/movies/{movie_id}/", headers=headers
+    )
+    assert response.status_code == 200, f"Expected status code 200, but got {response.status_code}"
+
+    assert response.json()["detail"] == f"Movie deleted successfully. But it was found in the following shopping carts: {[cart.id]}"
+    stmt_check = select(MovieModel).where(MovieModel.id == movie_id)
+    result_check = await db_session.execute(stmt_check)
+    deleted_movie = result_check.scalars().first()
+    assert deleted_movie is None, f"Movie with ID {movie_id} was not deleted."
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @pytest.mark.asyncio

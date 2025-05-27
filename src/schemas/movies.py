@@ -1,11 +1,10 @@
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
-from typing import Optional, List, Annotated
+from typing import Optional, List
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
-from database import GenreModel, StarModel, DirectorModel
 from schemas.examples.movies import (
     genre_schema_example,
     star_schema_example,
@@ -235,7 +234,6 @@ class MovieUpdateSchema(BaseModel):
     time: Optional[int] = None
     imdb: Optional[float] = Field(None, ge=1.0, le=10.0)
     votes: Optional[int] = Field(None, ge=1)
-
     meta_score: Optional[float] = Field(None, ge=0.0)
     gross: Optional[float] = Field(None, ge=0.0)
     description: Optional[str] = None

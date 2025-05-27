@@ -24,7 +24,7 @@ from storages import S3StorageClient
 from tests.doubles.fakes.storage import FakeS3Storage
 from tests.doubles.stubs.emails import StubEmailSender
 
-from database import UserModel
+from database import UserModel, MovieModel
 
 
 def pytest_configure(config):
@@ -416,3 +416,20 @@ async def create_user_and_profile(
     profile = result.scalars().first()
 
     return user, headers, profile
+
+
+@pytest_asyncio.fixture
+async def get_movie(db_session):
+    stmt = select(MovieModel).options(
+        joinedload(MovieModel.users_like)).limit(1)
+    result = await db_session.execute(stmt)
+    movie = result.scalars().first()
+    return movie
+
+
+@pytest_asyncio.fixture
+async def get_3_movies(db_session):
+    stmt = select(MovieModel).limit(3)
+    result = await db_session.execute(stmt)
+    movies = result.scalars().all()
+    return movies

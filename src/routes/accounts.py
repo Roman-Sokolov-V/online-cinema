@@ -36,7 +36,7 @@ from schemas import (
 )
 from security.http import get_token_or_none, get_optional_auth_token
 from security.interfaces import JWTAuthManagerInterface
-from .permissions import is_any_group, is_admin_group
+from .permissions import is_any_group, is_admin
 
 router = APIRouter()
 
@@ -383,7 +383,7 @@ async def activate_account(
     )
 
     return MessageResponseSchema(
-        message="User account activated successfully.")
+        detail="User account activated successfully.")
 
 
 @router.post(
@@ -424,7 +424,7 @@ async def request_password_reset_token(
 
     if not user or not user.is_active:
         return MessageResponseSchema(
-            message="If you are registered, you will receive an email with instructions."
+            detail="If you are registered, you will receive an email with instructions."
         )
 
     await db.execute(delete(PasswordResetTokenModel).where(
@@ -442,7 +442,7 @@ async def request_password_reset_token(
     )
 
     return MessageResponseSchema(
-        message="If you are registered, you will receive an email with instructions."
+        detail="If you are registered, you will receive an email with instructions."
     )
 
 
@@ -565,7 +565,7 @@ async def reset_password(
         login_link
     )
 
-    return MessageResponseSchema(message="Password reset successfully.")
+    return MessageResponseSchema(detail="Password reset successfully.")
 
 
 @router.post(
@@ -920,12 +920,12 @@ async def change_password(
         login_link
     )
 
-    return MessageResponseSchema(message="Password reset successfully.")
+    return MessageResponseSchema(detail="Password reset successfully.")
 
 
 @router.patch(
     "/users/{user_id}/group/",
-    dependencies=[Depends(is_admin_group)],
+    dependencies=[Depends(is_admin)],
     response_model=MessageResponseSchema,
     summary="Request to change user group.",
     description="Change a user's group, providing admin access token.",
@@ -1009,7 +1009,7 @@ async def change_user_group(
         )
 
     return MessageResponseSchema(
-        message=f"User`s group is changed successfully"
+        detail=f"User`s group is changed successfully"
     )
 
 
