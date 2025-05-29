@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.sql import Select
 from sqlalchemy.orm import selectinload
-from database import OrderModel, StatusEnum, MovieModel, OrderItemModel
+from database import OrderModel, OrderStatus, MovieModel, OrderItemModel
 from schemas import FilterParams
 
 
@@ -28,3 +28,8 @@ def get_orders_stmt(
         selectinload(OrderModel.order_items)
         .selectinload(OrderItemModel.movie)
     )
+
+async def set_status_canceled(session_id: str, db: AsyncSession) -> None:
+    stmt = select(OrderModel).where(OrderModel.session_id == session_id)
+    result = await db.execute(stmt)
+    order = result.scalars().one_or_none()

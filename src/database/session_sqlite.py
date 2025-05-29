@@ -16,7 +16,8 @@ sqlite_engine = create_async_engine(SQLITE_DATABASE_URL, echo=False)
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    if dbapi_connection.__class__.__module__.startswith("sqlite3"):
+    module = dbapi_connection.__class__.__module__
+    if "sqlite" in module:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()

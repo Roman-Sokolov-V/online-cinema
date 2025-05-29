@@ -70,5 +70,5 @@ class PaymentModel(Base):
         "OrderModel", backref="payments"
     )
     payment_items: Mapped[List[PaymentItemModel]] = relationship(
-        PaymentItemModel, back_populates="payment"
+        PaymentItemModel, back_populates="payment", lazy="selectin"
     )

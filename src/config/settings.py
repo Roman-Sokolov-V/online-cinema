@@ -40,6 +40,11 @@ class BaseAppSettings(BaseSettings):
     SUPER_USER_EMAIL: str = "admin@example.com"
     SUPER_USER_PASSWORD: str = "Admin@11"
 
+    STRIPE_SECRET_KEY: str  = os.getenv("STRIPE_SECRET_KEY", "")
+    STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    PAYMENT_SUCCESS_URL: str = "http://127.0.0.1:8000/api/v1/notifications/success/"
+    PAYMENT_CANCEL_URL: str = "http://127.0.0.1:8000/api/v1/notifications/cancel/"
+    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
     @property
     def S3_STORAGE_ENDPOINT(self) -> str:

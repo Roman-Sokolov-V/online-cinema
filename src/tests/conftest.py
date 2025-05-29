@@ -454,6 +454,6 @@ async def create_orders(get_3_movies, client, create_activate_login_user):
             f"/api/v1/cart/items/{movie.id}/", headers=header)
         assert response.status_code == 200
         response = await client.post(BASE_URL + "place/", headers=header)
-        assert response.status_code == 201
+        assert response.status_code == 303
         prefix += 1
     return {"users_data": users_data, "movies": movies}

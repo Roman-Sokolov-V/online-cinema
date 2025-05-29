@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from database import StatusEnum
+from database import OrderStatus
 from schemas.examples.orders import (
     create_order_example_schema,
     response_list_orders_example_schema
@@ -15,7 +15,7 @@ class OrderSchema(BaseModel):
     id: int
     created_at: datetime
     total_amount: Decimal
-    status: StatusEnum
+    status: OrderStatus
     movies: list[str]
 
 
@@ -49,7 +49,7 @@ class FilterParams(BaseModel):
     user_id: Optional[int] = Field(None, gt=0)
     date_from: Optional[datetime] = Field(None)
     date_to: Optional[datetime] = Field(None)
-    status: Optional[StatusEnum] = Field(
+    status: Optional[OrderStatus] = Field(
         None,
         description="Order status: pending, paid, or canceled",
     )

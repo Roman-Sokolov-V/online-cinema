@@ -1,11 +1,19 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+from decimal import Decimal
+from unittest.mock import patch, MagicMock
 
 import pytest
-from sqlalchemy import select, delete
+
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from database import CartModel, PurchaseModel, OrderModel, MovieModel, \
-    OrderItemModel
+from config import get_settings
+from database import (
+    OrderModel,
+    OrderItemModel,
+    OrderStatus,
+)
+from stripe_service.stripe_payment import create_stripe_session, settings
 
 BASE_URL = "/api/v1/orders/"
 
@@ -46,14 +54,46 @@ async def check_responses(response, orders_in_db):
                 }
 
 
+async def check_orders(movies, order, session_id):
+    assert order is not None
+    assert order.id is not None
+    assert order.created_at is not None
+    assert order.total_amount == sum(movie.price for movie in movies)
+    assert order.status == OrderStatus.PENDING
+    assert order.session_id == session_id
+    assert order.order_items != []
+    for item in order.order_items:
+        assert item.movie_id in [movie.id for movie in movies]
+        assert item.order_id == order.id
+        for movie in movies:
+            if movie.id == item.movie_id:
+                assert item.price_at_order == movie.price
+
+
+async def check_mocked_function(
+        response, total_amount, movies, moked_kwargs, message, url
+):
+    assert response.headers["location"] == url
+    assert moked_kwargs["total_amount"] == total_amount
+    assert set(moked_kwargs["titles"].split(", ")) == set(movie.name for movie in movies)
+    assert moked_kwargs["message"] == message
+
+
+@patch("routes.orders.create_stripe_session")
 @pytest.mark.asyncio
 async def test_place_order_success(
+        mock_create_session,
         client,
         db_session,
         seed_database,
         create_activate_login_user,
         get_3_movies
 ):
+    mock_checkout_session = MagicMock()
+    mock_checkout_session.url = "https://fake-stripe-session.com"
+    mock_checkout_session.id = "session_id"
+    mock_create_session.return_value = mock_checkout_session
+
     user_data = await create_activate_login_user()
     header = {"Authorization": f"Bearer {user_data['access_token']}"}
     movies = get_3_movies
@@ -64,22 +104,45 @@ async def test_place_order_success(
         assert response.status_code == 200
 
     response = await client.post(BASE_URL + "place/", headers=header)
-    await check_response(
-        response=response,
-        session=db_session,
+    assert response.status_code == 303
+
+    stmt = select(OrderModel)
+    result = await db_session.execute(stmt)
+    order = result.scalars().unique().one_or_none()
+    mock_create_session.assert_called_once()
+    args, kwargs = mock_create_session.call_args
+    expected_message = "Thank you for your purchase."
+    await check_orders(
         movies=movies,
-        detail="Movies from the cart added to the order successfully."
+        order=order,
+        session_id=mock_checkout_session.id
+    )
+    mock_create_session.assert_called_once()
+    await check_mocked_function(
+        response=response,
+        total_amount=sum(movie.price for movie in movies),
+        movies=movies,
+        moked_kwargs=kwargs,
+        message=expected_message,
+        url=mock_checkout_session.url
     )
 
 
+@patch("routes.orders.create_stripe_session")
 @pytest.mark.asyncio
 async def test_place_order_movie_in_cart_deleted_from_db(
+        mock_create_session,
         client,
         db_session,
         seed_database,
         create_activate_login_user,
         get_3_movies
 ):
+    mock_checkout_session = MagicMock()
+    mock_checkout_session.url = "https://fake-stripe-session.com"
+    mock_checkout_session.id = "session_id"
+    mock_create_session.return_value = mock_checkout_session
+
     user_data = await create_activate_login_user()
     header = {"Authorization": f"Bearer {user_data['access_token']}"}
     movies = get_3_movies
@@ -94,22 +157,43 @@ async def test_place_order_movie_in_cart_deleted_from_db(
     movies = movies[1:]
 
     response = await client.post(BASE_URL + "place/", headers=header)
-    await check_response(
+    assert response.status_code == 303
+    stmt = select(OrderModel)
+    result = await db_session.execute(stmt)
+    order = result.scalars().unique().one_or_none()
+
+    args, kwargs = mock_create_session.call_args
+    expected_message = "Thank you for your purchase."
+
+    await check_orders(
+        movies=movies, order=order, session_id=mock_checkout_session.id
+    )
+    mock_create_session.assert_called_once()
+    await check_mocked_function(
         response=response,
-        session=db_session,
+        total_amount=sum(movie.price for movie in movies),
         movies=movies,
-        detail="Movies from the cart added to the order successfully."
+        moked_kwargs=kwargs,
+        message=expected_message,
+        url=mock_checkout_session.url,
     )
 
 
+@patch("routes.orders.create_stripe_session")
 @pytest.mark.asyncio
 async def test_place_order_some_movie_in_other_pending_order(
+        mock_create_session,
         client,
         db_session,
         seed_database,
         create_activate_login_user,
         get_3_movies
 ):
+    mock_checkout_session = MagicMock()
+    mock_checkout_session.url = "https://fake-stripe-session.com"
+    mock_checkout_session.id = "session_id"
+    mock_create_session.return_value = mock_checkout_session
+
     user_data = await create_activate_login_user()
     header = {"Authorization": f"Bearer {user_data['access_token']}"}
     movies = get_3_movies
@@ -120,7 +204,7 @@ async def test_place_order_some_movie_in_other_pending_order(
     assert response.status_code == 200
 
     response = await client.post(BASE_URL + "place/", headers=header)
-    assert response.status_code == 201
+    assert response.status_code == 303
 
     # create second order
     for movie in movies:
@@ -131,18 +215,33 @@ async def test_place_order_some_movie_in_other_pending_order(
     movie_in_other_order = movies[0]
     movies = movies[1:]
 
-    expected_detail = (
-        f"Movies from the cart added to the order successfully. Movies with "
-        f"the following IDs: {[movie_in_other_order.id]} have not been added "
-        f"to the order because they are already in your other orders "
-        f"awaiting payment."
-    )
     response = await client.post(BASE_URL + "place/", headers=header)
-    await check_response(
+    assert response.status_code == 303
+    stmt = select(OrderModel).order_by(OrderModel.created_at.desc())
+    result = await db_session.execute(stmt)
+    orders = result.scalars().all()
+    assert len(orders) == 2
+    order = orders[0]
+
+    args, kwargs = mock_create_session.call_args
+
+    expected_message = (
+            f"WARNING! Movies: {movie_in_other_order.name} have "
+            f"not been added to the order because they are already in your "
+            f"other orders awaiting payment."
+        )
+
+    await check_orders(
+        movies=movies, order=order, session_id=mock_checkout_session.id
+    )
+
+    await check_mocked_function(
         response=response,
-        session=db_session,
+        total_amount=sum(movie.price for movie in movies),
         movies=movies,
-        detail=expected_detail
+        moked_kwargs=kwargs,
+        message=expected_message,
+        url=mock_checkout_session.url,
     )
 
 
@@ -389,3 +488,24 @@ async def test_list_orders_with_filters(
     assert response.json().get("orders") is not None
     assert len(response.json().get("orders")) == 1
     assert response.json().get("orders")[0]["id"] == order_3.id
+
+
+def test_create_stripe_session():
+    settings = get_settings()
+    message = "ok"
+    total_amount=Decimal(5)
+    stripe_session = create_stripe_session(
+        total_amount=total_amount, titles="DieHard", message=message
+    )
+    assert stripe_session is not None
+    assert stripe_session.url is not None
+    assert stripe_session.id is not None
+    assert stripe_session.url.startswith("https://checkout.stripe.com/")
+    assert stripe_session.id.startswith("cs_test")
+    assert stripe_session.object == "checkout.session"
+    assert stripe_session.mode == "payment"
+    assert stripe_session.success_url == settings.PAYMENT_SUCCESS_URL
+    assert stripe_session.cancel_url == settings.PAYMENT_CANCEL_URL
+    assert stripe_session.custom_text.submit["message"] == message
+    assert stripe_session.amount_total == total_amount * 100
+

@@ -22,11 +22,16 @@ from database.models.movies import (
     MoviesDirectorsModel,
 )
 from database.models.opinions import CommentModel
-from database.models.shopping_cart import CartModel, CartItemModel, PurchaseModel
-from database.models.orders import OrderModel, OrderItemModel, StatusEnum
-
+from database.models.shopping_cart import (
+    CartModel,
+    CartItemModel,
+    PurchaseModel
+)
+from database.models.orders import OrderModel, OrderItemModel, OrderStatus
+from database.models.payments import PaymentModel, PaymentItemModel, StatusPayment
 from database.session_sqlite import reset_sqlite_database as reset_database, reset_sync_sqlite_database
 from database.validators import accounts as accounts_validators
+
 
 environment = os.getenv("ENVIRONMENT", "developing")
 

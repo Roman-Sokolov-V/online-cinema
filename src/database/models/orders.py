@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import (
     ForeignKey,
     Integer,
+    String,
     DateTime,
     UniqueConstraint,
     DECIMAL,
@@ -14,11 +15,11 @@ from sqlalchemy import (
 )
 
 from database import Base
-from .accounts import UserModel
-from .movies import MovieModel
+from database.models.accounts import UserModel
+from database.models.movies import MovieModel
 
 
-class StatusEnum(str, enum.Enum):
+class OrderStatus(str, enum.Enum):
     PENDING = "pending"
     PAID = "paid"
     CANCELED = "canceled"
@@ -66,17 +67,18 @@ class OrderModel(Base):
         default=lambda: datetime.now(UTC),
         nullable=False
     )
-    status: Mapped[StatusEnum] = mapped_column(
-        Enum(StatusEnum), nullable=False, default=StatusEnum.PENDING
+    status: Mapped[OrderStatus] = mapped_column(
+        Enum(OrderStatus), nullable=False, default=OrderStatus.PENDING
     )
 
     total_amount: Mapped[Decimal] = mapped_column(
         DECIMAL(precision=10, scale=2), nullable=False
     )
+    session_id: Mapped[str] = mapped_column(String, nullable=True)
     user: Mapped[UserModel] = relationship(
         UserModel, backref="orders", lazy="joined"
     )
     order_items: Mapped[List[OrderItemModel]] = relationship(
         OrderItemModel,
-        backref="order", lazy="joined", passive_deletes=True
+        backref="order", lazy="selectin", passive_deletes=True
     )
