@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, delete
 from sqlalchemy.orm import joinedload
 
-from routes.crud.orders import get_orders_stmt
+from routes.crud.orders import get_orders_stmt, set_status_canceled
 from routes.utils import get_required_access_token_payload
 
 from database import (
@@ -251,21 +251,5 @@ async def cancel_order(
     )
     result = await db.execute(stmt)
     order = result.scalars().first()
-    if order is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found in your orders"
-        )
-    if order.status == OrderStatus.PAID:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Order already paid"
-        )
-    if order.status == OrderStatus.CANCELED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Order already cancelled"
-        )
-    order.status = OrderStatus.CANCELED
-    await db.commit()
+    await set_status_canceled(order=order, db=db)
     return MessageResponseSchema(detail="Order has canceled successfully.")
