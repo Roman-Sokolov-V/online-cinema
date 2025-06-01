@@ -40,6 +40,7 @@ celery = "^5.5.1"
 mypy = "^1.15.0"
 stripe = "^12.1.0"
 assertpy = "^1.1"
+python-dotenv = "^1.1.0"
 
 
 [build-system]
