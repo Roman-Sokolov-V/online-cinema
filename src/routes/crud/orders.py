@@ -1,10 +1,11 @@
-from datetime import datetime
+from fastapi  import HTTPException, status
+
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.sql import Select
 from sqlalchemy.orm import selectinload
-from database import OrderModel, OrderStatus, MovieModel, OrderItemModel
+from database import OrderModel, OrderStatus, OrderItemModel
 from schemas import FilterParams
 
 
@@ -32,4 +33,11 @@ def get_orders_stmt(
 async def set_status_canceled(session_id: str, db: AsyncSession) -> None:
     stmt = select(OrderModel).where(OrderModel.session_id == session_id)
     result = await db.execute(stmt)
-    order = result.scalars().one_or_none()
+    order: OrderModel | None = result.scalars().one_or_none()
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found"
+        )
+    order.status = OrderStatus.CANCELED
+    await db.commit()
