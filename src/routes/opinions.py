@@ -6,7 +6,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from config import get_accounts_email_notificator
+from config import get_email_notificator
 from database import (
     get_db, MovieModel, UserModel, CommentModel, RateModel
 )
@@ -502,7 +502,7 @@ async def add_reply_to_comment(
             get_required_access_token_payload),
         db: AsyncSession = Depends(get_db),
         email_sender: EmailSenderInterface = Depends(
-            get_accounts_email_notificator),
+            get_email_notificator),
 ) -> ResponseCommentarySchema:
     user_id = token_payload["user_id"]
 

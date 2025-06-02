@@ -15,7 +15,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 def create_stripe_session(
-    total_amount: Decimal, titles: str, message: str
+    total_amount: Decimal, titles: str, message: str, order_id: int
 ) -> stripe.checkout.Session:
     """
     Creates stripe payment session to pay
@@ -42,8 +42,8 @@ def create_stripe_session(
         "submit": {"message": message},
         },
         mode="payment",
-        success_url=settings.PAYMENT_SUCCESS_URL,
-        cancel_url=settings.PAYMENT_CANCEL_URL,
+        success_url=(settings.PAYMENT_SUCCESS_URL + f"{order_id}/"),
+        cancel_url=(settings.PAYMENT_CANCEL_URL + f"{order_id}/"),
     )
     return checkout_session
 

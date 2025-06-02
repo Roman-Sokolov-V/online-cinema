@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings, \
-    get_accounts_email_notificator
+    get_email_notificator
 from database import (
     get_db,
     UserModel,
@@ -77,7 +77,7 @@ async def register_user(
         user_data: UserRegistrationRequestSchema,
         db: AsyncSession = Depends(get_db),
         email_sender: EmailSenderInterface = Depends(
-            get_accounts_email_notificator),
+            get_email_notificator),
 ) -> UserRegistrationResponseSchema:
     """
     Endpoint for user registration.
@@ -184,7 +184,7 @@ async def send_new_activation_token(
         user_data: UserRegistrationRequestSchema,
         db: AsyncSession = Depends(get_db),
         email_sender: EmailSenderInterface = Depends(
-            get_accounts_email_notificator),
+            get_email_notificator),
 ) -> UserRegistrationResponseSchema:
     stmt: Any = select(UserModel).where(UserModel.email == user_data.email)
     result = await db.execute(stmt)
@@ -279,7 +279,7 @@ async def activate_account(
         token: str = Depends(get_token_or_none),
         db: AsyncSession = Depends(get_db),
         email_sender: EmailSenderInterface = Depends(
-            get_accounts_email_notificator),
+            get_email_notificator),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
 ) -> MessageResponseSchema:
     """
@@ -406,7 +406,7 @@ async def request_password_reset_token(
         data: PasswordResetRequestSchema,
         db: AsyncSession = Depends(get_db),
         email_sender: EmailSenderInterface = Depends(
-            get_accounts_email_notificator)
+            get_email_notificator)
 ) -> MessageResponseSchema:
     """
     Endpoint to request a password reset token.
@@ -498,7 +498,7 @@ async def reset_password(
         data: PasswordResetCompleteRequestSchema,
         db: AsyncSession = Depends(get_db),
         email_sender: EmailSenderInterface = Depends(
-            get_accounts_email_notificator)
+            get_email_notificator)
 ) -> MessageResponseSchema:
     """
     Endpoint for resetting a user's password.
@@ -878,7 +878,7 @@ async def change_password(
         data: PasswordChangeRequestSchema,
         db: AsyncSession = Depends(get_db),
         email_sender: EmailSenderInterface = Depends(
-            get_accounts_email_notificator)
+            get_email_notificator)
 ) -> MessageResponseSchema:
     """
     Endpoint for resetting a user's password.

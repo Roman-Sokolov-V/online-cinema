@@ -22,7 +22,7 @@ from database import (
     UserModel,
     UserGroupModel
 )
-from schemas import AccessTokenPayload, CreateOrderSchema, MessageResponseSchema
+from schemas import AccessTokenPayload, MessageResponseSchema
 from schemas.orders import ResponseListOrdersSchema, FilterParams, OrderSchema
 from stripe_service.stripe_payment import create_stripe_session
 
@@ -123,19 +123,26 @@ async def place_order(
     titles = ", ".join([movie.name for movie in movies_for_ordering])
 
     try:
+        order = OrderModel(
+            user_id=user_id, total_amount=total_amount
+        )
+        db.add(order)
+        await db.flush()
         checkout_session = await asyncio.create_task(
             asyncio.to_thread(
                 create_stripe_session,
                 total_amount=total_amount,
                 titles=titles,
-                message=message
+                message=message,
+                order_id=order.id
             )
         )
         session_id = checkout_session.id
-        order = OrderModel(
-            user_id=user_id, total_amount=total_amount, session_id=session_id
-        )
-        db.add(order)
+        order.session_id = session_id
+        # order = OrderModel(
+        #     user_id=user_id, total_amount=total_amount, session_id=session_id
+        # )
+        #db.add(order)
         for movie in movies_for_ordering:
             order_item = OrderItemModel(
                 order=order,

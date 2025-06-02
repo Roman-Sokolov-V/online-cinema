@@ -1,0 +1,5 @@
+{% if payments_status == "successful" %}
+  {% include "success_paid.html" %}
+{% elif payments_status == "cancelled" %}
+  {% include "canceled_paid.html" %}
+{% endif %}

@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from io import BytesIO
 from PIL import Image
 
-from config import get_settings, get_accounts_email_notificator, \
+from config import get_settings, get_email_notificator, \
     get_s3_storage_client
 from database import (
     reset_database,
@@ -133,7 +133,7 @@ async def auth_client(
     and successfully authentication and authorisation
     """
     app.dependency_overrides[
-        get_accounts_email_notificator] = lambda: email_sender_stub
+        get_email_notificator] = lambda: email_sender_stub
     app.dependency_overrides[get_s3_storage_client] = lambda: s3_storage_fake
     app.dependency_overrides[
         is_moderator_or_admin] = lambda: override_is_moderator_or_admin
@@ -153,7 +153,7 @@ async def client(email_sender_stub, s3_storage_fake):
     Overrides the dependencies for email sender and S3 storage with test doubles.
     """
     app.dependency_overrides[
-        get_accounts_email_notificator] = lambda: email_sender_stub
+        get_email_notificator] = lambda: email_sender_stub
     app.dependency_overrides[get_s3_storage_client] = lambda: s3_storage_fake
 
     async with AsyncClient(transport=ASGITransport(app=app),

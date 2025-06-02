@@ -76,7 +76,7 @@ class OrderModel(Base):
     )
     session_id: Mapped[str] = mapped_column(String, nullable=True)
     user: Mapped[UserModel] = relationship(
-        UserModel, backref="orders", lazy="joined"
+        UserModel, back_populates="orders"
     )
     order_items: Mapped[List[OrderItemModel]] = relationship(
         OrderItemModel,

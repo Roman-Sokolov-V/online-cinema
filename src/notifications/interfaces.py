@@ -89,3 +89,18 @@ class EmailSenderInterface(ABC):
         movie_title(str): title of the movie.
         """
         pass
+
+    @abstractmethod
+    async def send_payments_status(
+            self,
+            email: str,
+            payments_status: str
+    ) -> None:
+        """
+        Notify the user that the payment was successful or canceled
+
+        Args:
+        email (str): The recipient's email address.
+        payments_status (StatusPayment): Payments status of the payment.
+        """
+        pass
