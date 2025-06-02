@@ -49,5 +49,16 @@ async def create_payment(db: AsyncSession, session_id: str):
         await db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected error: {getattr(e, 'orig', str(e))}, while creating payment"
+            detail=f"Unexpected error: {getattr(e, 'orig', str(e))}, "
+                   f"while creating payment"
         )
+
+
+async def get_users_payments(user_id: int, db: AsyncSession):
+    stmt = (select(PaymentModel)
+            .where(PaymentModel.user_id == user_id)
+            .order_by(PaymentModel.created_at.desc()))
+    result = await db.execute(stmt)
+    payments = result.scalars().all()
+    return payments
+

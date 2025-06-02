@@ -40,3 +40,4 @@ from schemas.opinions import (
 )
 from schemas.shopping_cart import ResponseShoppingCartSchema
 from schemas.orders import CreateOrderSchema, FilterParams
+from schemas.payments import PaymentsHistorySchema, PaymentSchema

@@ -11,7 +11,8 @@ from routes import (
     shopping_cart_router,
     orders_router,
     webhooks_router,
-    notifications_router
+    notifications_router,
+    payments_router
 )
 
 app = FastAPI(
@@ -44,3 +45,4 @@ app.include_router(shopping_cart_router, prefix=f"{api_version_prefix}/cart", ta
 app.include_router(orders_router, prefix=f"{api_version_prefix}/orders", tags=["order"])
 app.include_router(webhooks_router, prefix=f"{api_version_prefix}/webhooks", tags=["webhooks"])
 app.include_router(notifications_router, prefix=f"{api_version_prefix}/notifications", tags=["notifications"])
+app.include_router(payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"])

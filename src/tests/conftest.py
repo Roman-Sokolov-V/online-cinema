@@ -435,6 +435,13 @@ async def get_3_movies(db_session):
     return movies
 
 
+@pytest_asyncio.fixture
+async def get_9_movies(db_session):
+    stmt = select(MovieModel).limit(9)
+    result = await db_session.execute(stmt)
+    movies = result.scalars().all()
+    return movies
+
 
 @pytest_asyncio.fixture
 async def create_orders(get_3_movies, client, create_activate_login_user):
@@ -457,3 +464,5 @@ async def create_orders(get_3_movies, client, create_activate_login_user):
         assert response.status_code == 303
         prefix += 1
     return {"users_data": users_data, "movies": movies}
+
+
