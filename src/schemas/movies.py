@@ -217,16 +217,6 @@ class MovieCreateSchema(BaseModel):
         }
     }
 
-    # @field_validator("country", mode="before")
-    # @classmethod
-    # def normalize_country(cls, value: str) -> str:
-    #     return value.upper()
-    #
-    # @field_validator("genres", "actors", "languages", mode="before")
-    # @classmethod
-    # def normalize_list_fields(cls, value: List[str]) -> List[str]:
-    #     return [item.title() for item in value]
-
 
 class MovieUpdateSchema(BaseModel):
     name: Optional[str] = None

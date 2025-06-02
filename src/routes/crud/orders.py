@@ -6,11 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.sql import Select
 from sqlalchemy.orm import selectinload
 from database import OrderModel, OrderStatus, OrderItemModel
-from schemas import FilterParams
+from schemas import OrdersFilterParams
 
 
 def get_orders_stmt(
-        filtered_query: FilterParams
+        filtered_query: OrdersFilterParams
 ) -> Select:
     stmt = select(OrderModel)
     if filtered_query.user_id is not None:

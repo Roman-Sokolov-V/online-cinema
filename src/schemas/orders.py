@@ -43,7 +43,7 @@ class ResponseListOrdersSchema(BaseModel):
     }
 
 
-class FilterParams(BaseModel):
+class OrdersFilterParams(BaseModel):
     limit: int = Field(10, gt=0, le=100)
     offset: int = Field(0, ge=0)
     user_id: Optional[int] = Field(None, gt=0)
@@ -55,7 +55,7 @@ class FilterParams(BaseModel):
     )
 
     @model_validator(mode="after")
-    def check_date_range(self) -> "FilterParams":
+    def check_date_range(self) -> "OrdersFilterParams":
         if self.date_from and self.date_to:
             if self.date_from > self.date_to:
                 raise ValueError(

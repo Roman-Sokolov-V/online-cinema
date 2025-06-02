@@ -23,7 +23,7 @@ from database import (
     UserGroupModel
 )
 from schemas import AccessTokenPayload, MessageResponseSchema
-from schemas.orders import ResponseListOrdersSchema, FilterParams, OrderSchema
+from schemas.orders import ResponseListOrdersSchema, OrdersFilterParams, OrderSchema
 from stripe_service.stripe_payment import create_stripe_session
 
 router = APIRouter()
@@ -139,10 +139,7 @@ async def place_order(
         )
         session_id = checkout_session.id
         order.session_id = session_id
-        # order = OrderModel(
-        #     user_id=user_id, total_amount=total_amount, session_id=session_id
-        # )
-        #db.add(order)
+
         for movie in movies_for_ordering:
             order_item = OrderItemModel(
                 order=order,
@@ -179,7 +176,7 @@ async def place_order(
     status_code=200
 )
 async def list_orders(
-        filtered_query: Annotated[FilterParams, Query()],
+        filtered_query: Annotated[OrdersFilterParams, Query()],
         token_payload: AccessTokenPayload = Depends(
             get_required_access_token_payload
         ),

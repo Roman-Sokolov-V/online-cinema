@@ -38,3 +38,29 @@ class PaymentsHistorySchema(BaseModel):
             ]
         },
     }
+
+class AllUsersPaymentsSchema(PaymentsHistorySchema):
+    prev_page: str
+    next_page: str
+    items: int
+
+
+
+class PaymentsFilterParams(BaseModel):
+    limit: int = Field(10, gt=0, le=100)
+    offset: int = Field(0, ge=0)
+    user_id: Optional[int] = Field(None, gt=0)
+    date_from: Optional[datetime] = Field(None)
+    date_to: Optional[datetime] = Field(None)
+    status: Optional[StatusPayment] = Field(
+        None,
+        description="Payment status: successful, cancelled, or refunded",
+    )
+
+    @model_validator(mode="after")
+    def check_date_range(self) -> "PaymentsFilterParams":
+        if self.date_from and self.date_to:
+            if self.date_from > self.date_to:
+                raise ValueError(
+                    "`date_from` must be before or equal to `date_to`.")
+        return self

@@ -39,5 +39,10 @@ from schemas.opinions import (
     ResponseReplySchema
 )
 from schemas.shopping_cart import ResponseShoppingCartSchema
-from schemas.orders import CreateOrderSchema, FilterParams
-from schemas.payments import PaymentsHistorySchema, PaymentSchema
+from schemas.orders import CreateOrderSchema, OrdersFilterParams
+from schemas.payments import (
+    PaymentsHistorySchema,
+    PaymentSchema,
+    PaymentsFilterParams,
+    AllUsersPaymentsSchema
+)
