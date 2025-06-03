@@ -14,6 +14,7 @@ router = APIRouter()
 
 
 settings: BaseAppSettings = get_settings()
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 webhook_secret = settings.STRIPE_WEBHOOK_SECRET
 
@@ -21,8 +22,8 @@ webhook_secret = settings.STRIPE_WEBHOOK_SECRET
     "/",
     summary="Webhook - order has paid",
     description="Endpoint to accept Webhook on successful payment and "
-                "automatic creation of Payment, and replacement of Order"
-                "status with successful ",
+                "automatic creation of Payment, and replacement of Order "
+                "status as 'successful'.",
     status_code=200
 )
 async def webhook_received(
@@ -56,12 +57,4 @@ async def webhook_received(
             db=db,
             session_id=event["data"]["object"]["id"]
         )
-
     return Response(status_code=status.HTTP_200_OK)
-
-    # elif event_type == "invoice.paid":
-    #     print("invoice paid")
-    # elif event_type == "invoice.payment_failed":
-    #     print("invoice payment failed")
-    # else:
-    #     print(f"unhandled event: {event_type}")

@@ -61,7 +61,7 @@ router = APIRouter()
         },
 
     },
-    status_code=201
+    status_code=303
 )
 async def place_order(
         token_payload: AccessTokenPayload = Depends(
@@ -218,6 +218,13 @@ async def list_orders(
     summary="Cancel order",
     description="User cancel order by order_id, before payment is completed",
     responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Order has canceled successfully."}
+                }
+            },
+        },
         404: {
             "description": "There is no couple with user_id and order_id",
             "content": {

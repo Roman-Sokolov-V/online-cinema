@@ -54,7 +54,6 @@ class PaymentsFilterParams(BaseModel):
     date_to: Optional[datetime] = Field(None)
     status: Optional[StatusPayment] = Field(
         None,
-        description="Payment status: successful, cancelled, or refunded",
     )
 
     @model_validator(mode="after")

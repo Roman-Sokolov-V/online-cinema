@@ -48,7 +48,9 @@ async def get_payments_history(
     dependencies=[Depends(is_moderator_or_admin_group)],
     response_model=AllUsersPaymentsSchema,
     summary="All users payments",
-    description="Endpoint to retrieve all users payments, for staff only",
+    description="Endpoint to retrieve all users payments, for staff only,"
+                "with pagination and filtering by date of creation, users "
+                "and status",
     status_code=200,
 )
 async def get_all_payments(
