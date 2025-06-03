@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select,func
@@ -8,7 +8,6 @@ from urllib.parse import urlencode
 
 
 from database import get_db, PaymentModel
-from main import api_version_prefix
 
 from routes.crud.payments import get_users_payments, get_filtered_stmt, \
     paginate_stmt
@@ -43,6 +42,7 @@ async def get_payments_history(
     data = {"payments": payments_list}
     return  PaymentsHistorySchema.model_validate(data)
 
+
 @router.get(
     "/all/",
     dependencies=[Depends(is_moderator_or_admin_group)],
@@ -52,6 +52,7 @@ async def get_payments_history(
     status_code=200,
 )
 async def get_all_payments(
+        request: Request,
         query: Annotated[PaymentsFilterParams, Query()],
         db: AsyncSession = Depends(get_db),
 ):
@@ -64,13 +65,13 @@ async def get_all_payments(
     if items is None:
         items = 0
 
-    pagineted_stmt = paginate_stmt(stmt=filtered_stmt, filtered_query=query)
-    result = await db.execute(pagineted_stmt.order_by(PaymentModel.created_at.desc()))
+    paginated_stmt = paginate_stmt(stmt=filtered_stmt, filtered_query=query)
+    result = await db.execute(paginated_stmt.order_by(PaymentModel.created_at.desc()))
     payments_list = result.scalars().all()
 
     next_query = query.model_copy()
     prev_query = query.model_copy()
-    if query.offset + query.limit < total_items:  # type: ignore
+    if query.offset + query.limit < items:  # type: ignore
         next_query.offset = query.offset + query.limit
     else:
         next_query.offset = query.offset
@@ -78,18 +79,9 @@ async def get_all_payments(
         prev_query.offset = query.offset - query.limit
     else:
         prev_query.offset = 0
-    # string_next_query = "&".join(
-    #     [f"{key}={value}" for key, value in next_query.model_dump().items()]
-    # )
-    # string_prev_query = "&".join(
-    #     [f"{key}={value}" for key, value in prev_query.model_dump().items()]
-    # )
-    #
-    # next_page = f"{api_version_prefix}/all/?{string_next_query}"
-    # prev_page = f"{api_version_prefix}/all/?{string_prev_query}"
 
-    next_page = f"{api_version_prefix}/all/?{urlencode(next_query.model_dump())}"
-    prev_page = f"{api_version_prefix}/all/?{urlencode(prev_query.model_dump())}"
+    next_page = f"{request.url.path}?{urlencode(next_query.model_dump(mode='json'))}"
+    prev_page = f"{request.url.path}?{urlencode(prev_query.model_dump(mode='json'))}"
 
     return AllUsersPaymentsSchema(
         payments=[

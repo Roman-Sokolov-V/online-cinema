@@ -13,7 +13,7 @@ from database import (
     OrderItemModel,
     OrderStatus,
 )
-from stripe_service.stripe_payment import create_stripe_session, settings
+from stripe_service.stripe_payment import create_stripe_session
 
 BASE_URL = "/api/v1/orders/"
 

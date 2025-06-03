@@ -45,11 +45,7 @@ class BaseAppSettings(BaseSettings):
     SUPER_USER_EMAIL: str = "admin@example.com"
     SUPER_USER_PASSWORD: str = "Admin@11"
 
-    STRIPE_SECRET_KEY: str
-    STRIPE_PUBLISHABLE_KEY: str
-    PAYMENT_SUCCESS_URL: str = "http://127.0.0.1:8000/api/v1/notifications/success/"
-    PAYMENT_CANCEL_URL: str = "http://127.0.0.1:8000/api/v1/notifications/cancel/"
-    STRIPE_WEBHOOK_SECRET: str
+
 
     @property
     def S3_STORAGE_ENDPOINT(self) -> str:
@@ -67,11 +63,23 @@ class Settings(BaseAppSettings):
     SECRET_KEY_REFRESH: str = str(binascii.hexlify(os.urandom(32)))
     JWT_SIGNING_ALGORITHM: str = "HS256"
 
+    STRIPE_SECRET_KEY: str
+    STRIPE_PUBLISHABLE_KEY: str
+    PAYMENT_SUCCESS_URL: str = "http://127.0.0.1:8000/api/v1/notifications/success/"
+    PAYMENT_CANCEL_URL: str = "http://127.0.0.1:8000/api/v1/notifications/cancel/"
+    STRIPE_WEBHOOK_SECRET: str
+
 
 class TestingSettings(BaseAppSettings):
     SECRET_KEY_ACCESS: str = "SECRET_KEY_ACCESS"
     SECRET_KEY_REFRESH: str = "SECRET_KEY_REFRESH"
     JWT_SIGNING_ALGORITHM: str = "HS256"
+
+    STRIPE_SECRET_KEY: str
+    STRIPE_PUBLISHABLE_KEY: str
+    PAYMENT_SUCCESS_URL: str = "http://127.0.0.1:8000/api/v1/notifications/success/"
+    PAYMENT_CANCEL_URL: str = "http://127.0.0.1:8000/api/v1/notifications/cancel/"
+    STRIPE_WEBHOOK_SECRET: str
 
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
         object.__setattr__(self, 'PATH_TO_DB', ":memory:")

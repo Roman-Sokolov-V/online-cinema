@@ -436,8 +436,8 @@ async def get_3_movies(db_session):
 
 
 @pytest_asyncio.fixture
-async def get_9_movies(db_session):
-    stmt = select(MovieModel).limit(9)
+async def get_12_movies(db_session):
+    stmt = select(MovieModel).limit(12)
     result = await db_session.execute(stmt)
     movies = result.scalars().all()
     return movies

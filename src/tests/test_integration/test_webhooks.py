@@ -1,7 +1,6 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 from sqlalchemy import select
-from sqlalchemy.testing.pickleable import Order
 
 from database import OrderModel, OrderStatus, PaymentModel, StatusPayment
 
