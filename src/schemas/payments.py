@@ -8,7 +8,7 @@ from database import StatusPayment
 
 from schemas.examples.payments import (
     payment_example_schema,
-    payments_history_example_schema
+    payments_history_example_schema,
 )
 
 
@@ -20,11 +20,7 @@ class PaymentSchema(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                payment_example_schema
-            ]
-        },
+        "json_schema_extra": {"examples": [payment_example_schema]},
     }
 
 
@@ -32,18 +28,14 @@ class PaymentsHistorySchema(BaseModel):
     payments: list[PaymentSchema]
 
     model_config = {
-        "json_schema_extra": {
-            "examples": [
-                payments_history_example_schema
-            ]
-        },
+        "json_schema_extra": {"examples": [payments_history_example_schema]},
     }
+
 
 class AllUsersPaymentsSchema(PaymentsHistorySchema):
     prev_page: str
     next_page: str
     items: int
-
 
 
 class PaymentsFilterParams(BaseModel):
@@ -61,5 +53,6 @@ class PaymentsFilterParams(BaseModel):
         if self.date_from and self.date_to:
             if self.date_from > self.date_to:
                 raise ValueError(
-                    "`date_from` must be before or equal to `date_to`.")
+                    "`date_from` must be before or equal to `date_to`."
+                )
         return self

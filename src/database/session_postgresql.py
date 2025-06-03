@@ -32,7 +32,6 @@ SyncPostgresqlSessionLocal = sessionmaker(  # type: ignore
 )
 
 
-
 async def get_postgresql_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Provide an asynchronous database session.

@@ -28,7 +28,7 @@ from schemas.accounts import (
     TokenRefreshResponseSchema,
     LogoutResponseSchema,
     PasswordChangeRequestSchema,
-    ChangeGroupRequestSchema
+    ChangeGroupRequestSchema,
 )
 from schemas.tokens import AccessTokenPayload
 
@@ -36,7 +36,7 @@ from schemas.opinions import (
     CommentSchema,
     ResponseCommentarySchema,
     ReplySchema,
-    ResponseReplySchema
+    ResponseReplySchema,
 )
 from schemas.shopping_cart import ResponseShoppingCartSchema
 from schemas.orders import CreateOrderSchema, OrdersFilterParams
@@ -44,5 +44,5 @@ from schemas.payments import (
     PaymentsHistorySchema,
     PaymentSchema,
     PaymentsFilterParams,
-    AllUsersPaymentsSchema
+    AllUsersPaymentsSchema,
 )

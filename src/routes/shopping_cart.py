@@ -12,7 +12,7 @@ from database import get_db, MovieModel, CartModel, CartItemModel
 from schemas import (
     AccessTokenPayload,
     ResponseShoppingCartSchema,
-    MessageResponseSchema
+    MessageResponseSchema,
 )
 
 router = APIRouter()
@@ -22,16 +22,18 @@ router = APIRouter()
     "/items/{movie_id}/",
     response_model=ResponseShoppingCartSchema,
     summary="Add movie to shopping cart",
-    description=("Adding a movie to the shopping cart, with automatic "
-                 "creation of a shopping cart if it does not exist yet."
-                 ),
+    description=(
+        "Adding a movie to the shopping cart, with automatic "
+        "creation of a shopping cart if it does not exist yet."
+    ),
     responses={
         404: {
             "description": "Movie not found.",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Movie with the given ID was not found."}
+                        "detail": "Movie with the given ID was not found."
+                    }
                 }
             },
         },
@@ -45,42 +47,39 @@ router = APIRouter()
                         },
                         "user_not_found": {
                             "detail": "Movie already exists in shopping cart."
-                        }
+                        },
                     }
-
                 }
             },
         },
-
     },
-    status_code=200
+    status_code=200,
 )
 async def add_movie_to_cart(
-        movie_id: int = Path(..., ge=0),
-        token_payload: AccessTokenPayload = Depends(
-            get_required_access_token_payload
-        ),
-        db: AsyncSession = Depends(get_db),
+    movie_id: int = Path(..., ge=0),
+    token_payload: AccessTokenPayload = Depends(
+        get_required_access_token_payload
+    ),
+    db: AsyncSession = Depends(get_db),
 ):
     movie = await db.get(MovieModel, movie_id)
     if not movie:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Movie with the ID provided does not exist."
+            detail="Movie with the ID provided does not exist.",
         )
     user_id = token_payload["user_id"]
 
-
     stmt: Any = select(PurchaseModel.id).where(
-        (PurchaseModel.movie_id == movie_id) &
-        (PurchaseModel.user_id == user_id)
+        (PurchaseModel.movie_id == movie_id)
+        & (PurchaseModel.user_id == user_id)
     )
     result = await db.execute(stmt)
     purchase_id = result.scalars().first()
     if purchase_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You already purchased this movie."
+            detail="You already purchased this movie.",
         )
     stmt = select(CartModel).where(CartModel.user_id == user_id)
     result = await db.execute(stmt)
@@ -94,17 +93,16 @@ async def add_movie_to_cart(
         if movie_id in (item.movie_id for item in cart.cart_items):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Movie already exists in shopping cart."
+                detail="Movie already exists in shopping cart.",
             )
 
     item = CartItemModel(movie_id=movie_id, cart_id=cart.id)
     db.add(item)
     await db.commit()
     await db.refresh(cart, attribute_names=["cart_items"])
-    return ResponseShoppingCartSchema.model_validate(cart,
-                                                     from_attributes=True)
-
-
+    return ResponseShoppingCartSchema.model_validate(
+        cart, from_attributes=True
+    )
 
 
 @router.get(
@@ -122,13 +120,13 @@ async def add_movie_to_cart(
             },
         },
     },
-    status_code=200
+    status_code=200,
 )
 async def list_items_in_cart(
-        token_payload: AccessTokenPayload = Depends(
-            get_required_access_token_payload
-        ),
-        db: AsyncSession = Depends(get_db),
+    token_payload: AccessTokenPayload = Depends(
+        get_required_access_token_payload
+    ),
+    db: AsyncSession = Depends(get_db),
 ):
     user_id = token_payload["user_id"]
     stmt = select(CartModel).where(CartModel.user_id == user_id)
@@ -137,10 +135,11 @@ async def list_items_in_cart(
     if not cart:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"You do not have shopping cart yet."
+            detail="You do not have shopping cart yet.",
         )
     return ResponseShoppingCartSchema.model_validate(
-        cart, from_attributes=True)
+        cart, from_attributes=True
+    )
 
 
 @router.delete(
@@ -167,15 +166,14 @@ async def list_items_in_cart(
                 }
             },
         },
-
     },
-    status_code=200
+    status_code=200,
 )
 async def clear_shopping_cart(
-        token_payload: AccessTokenPayload = Depends(
-            get_required_access_token_payload
-        ),
-        db: AsyncSession = Depends(get_db),
+    token_payload: AccessTokenPayload = Depends(
+        get_required_access_token_payload
+    ),
+    db: AsyncSession = Depends(get_db),
 ):
     user_id = token_payload["user_id"]
 
@@ -185,7 +183,7 @@ async def clear_shopping_cart(
     if not cart:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"You do not have shopping cart yet."
+            detail="You do not have shopping cart yet.",
         )
     await db.execute(
         delete(CartItemModel).where(CartItemModel.cart_id == cart.id)
@@ -200,15 +198,17 @@ async def clear_shopping_cart(
     "/items/{movie_id}/",
     response_model=ResponseShoppingCartSchema,
     summary="Remove movie from shopping cart",
-    description=("Remove the movie from the cart according"
-                 " to the movie ID provided."),
+    description=(
+        "Remove the movie from the cart according" " to the movie ID provided."
+    ),
     responses={
         404: {
             "description": "Movie not found.",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Movie with the given ID was not found."}
+                        "detail": "Movie with the given ID was not found."
+                    }
                 }
             },
         },
@@ -216,28 +216,25 @@ async def clear_shopping_cart(
             "description": "Movie not exists in shopping cart",
             "content": {
                 "application/json": {
-                    "example": {
-                        "detail": "Movie not exists in shopping cart"
-                    },
+                    "example": {"detail": "Movie not exists in shopping cart"},
                 }
             },
         },
-
     },
-    status_code=200
+    status_code=200,
 )
 async def remove_movie_from_cart(
-        movie_id: int = Path(..., ge=0),
-        token_payload: AccessTokenPayload = Depends(
-            get_required_access_token_payload
-        ),
-        db: AsyncSession = Depends(get_db),
+    movie_id: int = Path(..., ge=0),
+    token_payload: AccessTokenPayload = Depends(
+        get_required_access_token_payload
+    ),
+    db: AsyncSession = Depends(get_db),
 ):
     movie = await db.get(MovieModel, movie_id)
     if not movie:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Movie with the ID provided does not exist."
+            detail="Movie with the ID provided does not exist.",
         )
     user_id = token_payload["user_id"]
 
@@ -247,7 +244,7 @@ async def remove_movie_from_cart(
     if not cart:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"You do not have shopping cart yet."
+            detail="You do not have shopping cart yet.",
         )
     for item in cart.cart_items:
         if item.movie_id == movie_id:
@@ -255,10 +252,11 @@ async def remove_movie_from_cart(
             await db.commit()
             await db.refresh(cart, attribute_names=["cart_items"])
             return ResponseShoppingCartSchema.model_validate(
-                cart, from_attributes=True)
+                cart, from_attributes=True
+            )
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Movie not exists in shopping cart."
+        detail="Movie not exists in shopping cart.",
     )
 
 
@@ -267,8 +265,10 @@ async def remove_movie_from_cart(
     response_model=ResponseShoppingCartSchema,
     dependencies=[Depends(is_admin)],
     summary="Retrieve users shopping cart",
-    description=("<h3>For admins only</h3>"
-                 "<p>Retrieve users shopping cart, by user_id.</p>"),
+    description=(
+        "<h3>For admins only</h3>"
+        "<p>Retrieve users shopping cart, by user_id.</p>"
+    ),
     responses={
         404: {
             "description": "Shopping cart not exists",
@@ -279,11 +279,11 @@ async def remove_movie_from_cart(
             },
         },
     },
-    status_code=200
+    status_code=200,
 )
 async def retrieve_users_cart(
-        user_id: int = Path(..., ge=0),
-        db: AsyncSession = Depends(get_db),
+    user_id: int = Path(..., ge=0),
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(CartModel).where(CartModel.user_id == user_id)
     result = await db.execute(stmt)
@@ -291,7 +291,8 @@ async def retrieve_users_cart(
     if not cart:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"You do not have shopping cart yet."
+            detail="You do not have shopping cart yet.",
         )
     return ResponseShoppingCartSchema.model_validate(
-        cart, from_attributes=True)
+        cart, from_attributes=True
+    )

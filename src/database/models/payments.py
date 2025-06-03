@@ -37,6 +37,7 @@ class PaymentItemModel(Base):
         "PaymentModel", back_populates="payment_items"
     )
 
+
 class PaymentModel(Base):
     __tablename__ = "payments"
 

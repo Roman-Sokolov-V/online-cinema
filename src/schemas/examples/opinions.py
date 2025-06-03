@@ -1,7 +1,4 @@
-
-comment_schema_example = {
-    "content": "This is amazing movie!"
-}
+comment_schema_example = {"content": "This is amazing movie!"}
 
 response_commentary_schema_example = {
     "id": 1,
@@ -12,7 +9,7 @@ response_commentary_schema_example = {
 
 reply_schema_example = {
     "content": "And what do you understand? This movie is a derivative",
-    "is_like": False
+    "is_like": False,
 }
 
 response_reply_schema_example = {

@@ -16,7 +16,6 @@ app.conf.result_backend = os.environ.get("CELERY_RESULT_BACKEND", "redis://redis
 app.conf.timezone = "UTC"
 
 
-
 @app.task()
 def remove_expired_activation_tokens():
     print("remove_expired_activation_tokens starts")

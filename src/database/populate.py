@@ -64,7 +64,6 @@ class CSVDatabaseSeeder:
 
         data["Certificate"] = data["Certificate"].str.strip()
 
-
         if pd.api.types.is_object_dtype(data["Runtime"]):
             data["Runtime"] = data["Runtime"].str.strip().str.split().str[
                 0].astype(int)
@@ -199,8 +198,12 @@ class CSVDatabaseSeeder:
     async def _prepare_reference_data(
             self,
             data: pd.DataFrame
-    ) -> Tuple[Dict[str, object], Dict[str, object], Dict[str, object], Dict[
-        str, object]]:
+    ) -> Tuple[
+        Dict[str, object],
+        Dict[str, object],
+        Dict[str, object],
+        Dict[str, object]
+    ]:
         """
         Gather unique values for countries, genres, actors, and languages from the DataFrame.
         Then call _get_or_create_bulk for each to ensure they exist in the database.
@@ -280,7 +283,8 @@ class CSVDatabaseSeeder:
             directors_map: Dict[str, object],
 
     ) -> Tuple[
-        List[Dict[str, int]], List[Dict[str, int]], List[Dict[str, int]]]:
+        List[Dict[str, int]], List[Dict[str, int]], List[Dict[str, int]]
+    ]:
         """
         Prepare three lists of dictionaries: movie-genre, movie-actor, and
         associations for all movies in the DataFrame.

@@ -66,14 +66,14 @@ class EmailSenderInterface(ABC):
 
     @abstractmethod
     async def send_activity_notificator(
-           self,
-           email: str,
-           comment_id: int,
-           comment_content: str,
-           reply_id: int,
-           movie_title: str,
-           is_like: bool | None = None,
-           reply_content: str | None = None,
+            self,
+            email: str,
+            comment_id: int,
+            comment_content: str,
+            reply_id: int,
+            movie_title: str,
+            is_like: bool | None = None,
+            reply_content: str | None = None,
     ) -> None:
         """
         Notify users when their comments receive replies or likes.

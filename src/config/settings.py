@@ -31,7 +31,7 @@ class BaseAppSettings(BaseSettings):
     EMAIL_PORT: int = 25
     EMAIL_HOST_USER: str = "testuser"
     EMAIL_HOST_PASSWORD: str = "test_password"
-    EMAIL_USE_TLS: bool = False # os.getenv("EMAIL_USE_TLS", "False").lower() == "true"
+    EMAIL_USE_TLS: bool = False
     MAILHOG_API_PORT: int = 8025
 
     S3_STORAGE_HOST: str = "minio-theater"
@@ -44,8 +44,6 @@ class BaseAppSettings(BaseSettings):
 
     SUPER_USER_EMAIL: str = "admin@example.com"
     SUPER_USER_PASSWORD: str = "Admin@11"
-
-
 
     @property
     def S3_STORAGE_ENDPOINT(self) -> str:

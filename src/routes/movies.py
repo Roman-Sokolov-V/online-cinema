@@ -13,7 +13,7 @@ from database import (
     DirectorModel,
     CertificationModel,
     GenreModel,
-    CartItemModel
+    CartItemModel,
 )
 from routes.filters import apply_m2m_filter
 from routes.permissions import is_moderator_or_admin
@@ -21,7 +21,8 @@ from schemas import (
     MovieListResponseSchema,
     MovieDetailSchema,
     MovieUpdateSchema,
-    MovieCreateSchema, MessageResponseSchema
+    MovieCreateSchema,
+    MessageResponseSchema,
 )
 
 
@@ -33,79 +34,89 @@ router = APIRouter()
     response_model=MovieListResponseSchema,
     summary="Get a paginated list of movies",
     description=(
-            "<h3>This endpoint retrieves a paginated list of movies from the database.</h3>"
-    "<ul>"
-    "<li>Use <code>page</code> and <code>per_page</code> to paginate results.</li>"
-    "<li>Filter movies by <code>genres</code>, <code>stars</code>, <code>directors</code>, <code>year</code>, and <code>min_rating</code>.</li>"
-    "<li>Sort results using <code>sort_params</code> (e.g., <code>older,rating</code>). Only non-conflicting combinations are allowed.</li>"
-    "</ul>"
-    "<p>Example: <code>/movies/?genres=action,horror&sort_params=older,rating&page=2</code></p>"
+        "<h3>This endpoint retrieves a paginated list of movies from the "
+        "database.</h3>"
+        "<ul>"
+        "<li>Use <code>page</code> and <code>per_page</code> to paginate "
+        "results.</li>"
+        "<li>Filter movies by <code>genres</code>, <code>stars</code>, "
+        "<code>directors</code>, <code>year</code>, and "
+        "<code>min_rating</code>.</li>"
+        "<li>Sort results using <code>sort_params</code> (e.g., <code>older, "
+        "rating</code>). Only non-conflicting combinations are allowed.</li>"
+        "</ul>"
+        "<p>Example: <code>/movies/?genres=action,horror&sort_params=older,"
+        "rating&page=2</code></p>"
     ),
     responses={
         404: {
             "description": "No movies found.",
             "content": {
-                "application/json": {
-                    "example": {"detail": "No movies found."}
-                }
+                "application/json": {"example": {"detail": "No movies found."}}
             },
         }
-    }
+    },
 )
 async def get_movie_list(
-        page: int = Query(1, ge=1, description="Page number (1-based index)"),
-        per_page: int = Query(10, ge=1, le=20,
-                              description="Number of items per page"),
-        genres: Optional[str] = Query(
-            default=None,
-            description="Genres to filter on (single or muliiple with using '|' for OR, ',' for AND), Case-insensitive filtering.",
-            examples=[
-                "?genres=action|horror",
-                "?genres=action,horror",
-                "?genres=action"
-            ],
-            example="action,horror"
-        ),
-        stars: str = Query(
-            default=None,
-            description="Stars to filter on (single or muliiple with using '|' for OR, ',' for AND), Case-insensitive filtering.",
-            examples=[
-                "?stars=Danny de Vito|Nicolas Cage",
-                "?stars=Danny de Vito,Nicolas Cage",
-                "?stars=Danny de Vito"
-            ],
-            example="Gaylen Ross,David Emge"
-        ),
-        directors: str = Query(
-            default=None,
-            description="Directors to filter on (single or muliiple with using '|' for OR, ',' for AND), Case-insensitive filtering.",
-            examples=[
-                "?directors=Stiven Spilberg|Nicolas Cage",
-                "?directors=Stiven Spilberg,Nicolas Cage",
-                "?directors=Stiven Spilberg"
-            ],
-            example="George A. Romero"
-        ),
-        year: str = Query(
-            default=None,
-            description="Release  year to filter on (exact)",
-            example="1978"
-        ),
-        min_rating: str = Query(
-            default=None,
-            description="IMDb rating to filter on. Biger or equal than value to filter on",
-            example="7.8"
-        ),
-        sort_params: str = Query(
-            default=None,
-            description="Ordering movies by price: (l-price, h-price), or "
-                        "release year: (older, newer) and imdb rating: rating"
-                        "or a combination of them separated by a comma",
-            examples={"single": {"value": "older"}, "multiple": {"value": "older,h-price"}},
-            example="older,h-price"
-        ),
-
-        db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1, description="Page number (1-based index)"),
+    per_page: int = Query(
+        10, ge=1, le=20, description="Number of items per page"
+    ),
+    genres: Optional[str] = Query(
+        default=None,
+        description="Genres to filter on (single or muliiple with using '|' "
+        "for OR, ',' for AND), Case-insensitive filtering.",
+        examples=[
+            "?genres=action|horror",
+            "?genres=action,horror",
+            "?genres=action",
+        ],
+        example="action,horror",
+    ),
+    stars: str = Query(
+        default=None,
+        description="Stars to filter on (single or muliiple with using '|' "
+                    "for OR, ',' for AND), Case-insensitive filtering.",
+        examples=[
+            "?stars=Danny de Vito|Nicolas Cage",
+            "?stars=Danny de Vito,Nicolas Cage",
+            "?stars=Danny de Vito",
+        ],
+        example="Gaylen Ross,David Emge",
+    ),
+    directors: str = Query(
+        default=None,
+        description="Directors to filter on (single or muliiple with using "
+                    "'|' for OR, ',' for AND), Case-insensitive filtering.",
+        examples=[
+            "?directors=Stiven Spilberg|Nicolas Cage",
+            "?directors=Stiven Spilberg,Nicolas Cage",
+            "?directors=Stiven Spilberg",
+        ],
+        example="George A. Romero",
+    ),
+    year: str = Query(
+        default=None,
+        description="Release  year to filter on (exact)",
+        example="1978",
+    ),
+    min_rating: str = Query(
+        default=None,
+        description="IMDb rating to filter on. Biger or equal than value to filter on",
+        example="7.8",
+    ),
+    sort_params: str = Query(
+        default=None,
+        description="Ordering movies by price: (l-price, h-price), or "
+        "release year: (older, newer) and imdb rating: rating"
+        "or a combination of them separated by a comma",
+        examples={
+            "single": {"value": "older"},
+            "multiple": {"value": "older,h-price"},
+        },
+        example="older,h-price",
+    ),
+    db: AsyncSession = Depends(get_db),
 ) -> MovieListResponseSchema:
     """
     Retrieve a paginated and filterable list of movies from the database.
@@ -163,13 +174,17 @@ async def get_movie_list(
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid sort_param value: '{param}', "
-                           f"value should be one of {allowed_params}")
+                    f"value should be one of {allowed_params}",
+                )
             params[index] = param
 
-        if {"l-price", "h-price"}.issubset(params) or {"older", "newer"}.issubset(params):
+        if {"l-price", "h-price"}.issubset(params) or {
+            "older",
+            "newer",
+        }.issubset(params):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"opposite parameters as  cannot be in the same filter-set"
+                detail="opposite parameters as  cannot be in the same filter-set",
             )
 
         sort_map = {
@@ -177,14 +192,14 @@ async def get_movie_list(
             "h-price": MovieModel.price.desc,
             "older": MovieModel.year.asc,
             "newer": MovieModel.year.desc,
-            "rating": MovieModel.imdb.desc
+            "rating": MovieModel.imdb.desc,
         }
         order_by = [sort_map[param]() for param in params]
 
     stmt = select(MovieModel).options(
         selectinload(MovieModel.genres),
         selectinload(MovieModel.directors),
-        selectinload(MovieModel.stars)
+        selectinload(MovieModel.stars),
     )
 
     stmt = apply_m2m_filter(stmt, MovieModel.genres, genres)
@@ -198,7 +213,7 @@ async def get_movie_list(
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail="'year' in query string must be an integer."
+                detail="'year' in query string must be an integer.",
             )
         stmt = stmt.filter(MovieModel.year == year)
     if min_rating:
@@ -207,7 +222,7 @@ async def get_movie_list(
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail="'min_rating' in query string must be a float."
+                detail="'min_rating' in query string must be a float.",
             )
         stmt = stmt.filter(MovieModel.imdb >= min_rating)
 
@@ -232,8 +247,16 @@ async def get_movie_list(
 
     response = MovieListResponseSchema(
         movies=movie_list,
-        prev_page=f"/theater/movies/?page={page - 1}&per_page={per_page}" if page > 1 else None,
-        next_page=f"/theater/movies/?page={page + 1}&per_page={per_page}" if page < total_filtered_pages else None,
+        prev_page=(
+            f"/theater/movies/?page={page - 1}&per_page={per_page}"
+            if page > 1
+            else None
+        ),
+        next_page=(
+            f"/theater/movies/?page={page + 1}&per_page={per_page}"
+            if page < total_filtered_pages
+            else None
+        ),
         total_pages=total_filtered_pages,
         total_items=total_filtered_items,
     )
@@ -246,10 +269,10 @@ async def get_movie_list(
     response_model=MovieDetailSchema,
     summary="Add a new movie",
     description=(
-            "<h3>This endpoint allows moderators and admins add a new movie to the database. "
-            "It accepts details such as name, year, genres, stars, imdb, and "
-            "other attributes. The associated stars, directors and genres "
-            "will be created or linked automatically.</h3>"
+        "<h3>This endpoint allows moderators and admins add a new movie to the database. "
+        "It accepts details such as name, year, genres, stars, imdb, and "
+        "other attributes. The associated stars, directors and genres "
+        "will be created or linked automatically.</h3>"
     ),
     responses={
         201: {
@@ -262,13 +285,12 @@ async def get_movie_list(
                     "example": {"detail": "Invalid input data."}
                 }
             },
-        }
+        },
     },
-    status_code=201
+    status_code=201,
 )
 async def create_movie(
-        movie_data: MovieCreateSchema,
-        db: AsyncSession = Depends(get_db)
+    movie_data: MovieCreateSchema, db: AsyncSession = Depends(get_db)
 ) -> MovieDetailSchema:
     """
     Add a new movie to the database.
@@ -291,9 +313,9 @@ async def create_movie(
         - 400 if input data is invalid (e.g., violating a constraint).
     """
     existing_stmt = select(MovieModel).where(
-        (MovieModel.name == movie_data.name) &
-        (MovieModel.year == movie_data.year) &
-        (MovieModel.time == movie_data.time)
+        (MovieModel.name == movie_data.name)
+        & (MovieModel.year == movie_data.year)
+        & (MovieModel.time == movie_data.time)
     )
     existing_result = await db.execute(existing_stmt)
     existing_movie = existing_result.scalars().first()
@@ -305,7 +327,7 @@ async def create_movie(
                 f"A movie with the name '{movie_data.name}', release year "
                 f"'{movie_data.year}' and duration time '{movie_data.time}' "
                 f"already exists."
-            )
+            ),
         )
 
     try:
@@ -313,7 +335,8 @@ async def create_movie(
         if movie_data.genres:
             for genre_name in movie_data.genres:
                 genre_stmt = select(GenreModel).where(
-                    GenreModel.name == genre_name)
+                    GenreModel.name == genre_name
+                )
                 genre_result = await db.execute(genre_stmt)
                 genre = genre_result.scalars().first()
 
@@ -326,7 +349,8 @@ async def create_movie(
         if movie_data.stars:
             for star_name in movie_data.stars:
                 star_stmt = select(StarModel).where(
-                    StarModel.name == star_name)
+                    StarModel.name == star_name
+                )
                 star_result = await db.execute(star_stmt)
                 star = star_result.scalars().first()
 
@@ -340,7 +364,8 @@ async def create_movie(
         if movie_data.directors:
             for director_name in movie_data.directors:
                 director_stmt = select(DirectorModel).where(
-                    DirectorModel.name == director_name)
+                    DirectorModel.name == director_name
+                )
                 director_result = await db.execute(director_stmt)
                 director = director_result.scalars().first()
 
@@ -357,7 +382,8 @@ async def create_movie(
         certification = certification_result.scalars().first()
         if not certification:
             certification = CertificationModel(
-                name=movie_data.certification_name)
+                name=movie_data.certification_name
+            )
 
         movie = MovieModel(
             name=movie_data.name,
@@ -372,14 +398,13 @@ async def create_movie(
             certification=certification,
             genres=genres,
             stars=stars,
-            directors=directors
+            directors=directors,
         )
 
         db.add(movie)
         await db.commit()
         await db.refresh(
-            movie,
-            ["genres", "stars", "directors", "certification"]
+            movie, ["genres", "stars", "directors", "certification"]
         )
 
         return MovieDetailSchema.model_validate(movie)
@@ -394,25 +419,27 @@ async def create_movie(
     response_model=MovieDetailSchema,
     summary="Get movie details by ID",
     description=(
-            "<h3>Fetch detailed information about a specific movie by its unique ID. "
-            "This endpoint retrieves all available details for the movie, such as "
-            "its name, genre, crew, budget, and revenue. If the movie with the given "
-            "ID is not found, a 404 error will be returned.</h3>"
+        "<h3>Fetch detailed information about a specific movie by its unique ID. "
+        "This endpoint retrieves all available details for the movie, such as "
+        "its name, genre, crew, budget, and revenue. If the movie with the given "
+        "ID is not found, a 404 error will be returned.</h3>"
     ),
     responses={
         404: {
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."
+                    }
                 }
             },
         }
-    }
+    },
 )
 async def get_movie_by_id(
-        movie_id: int,
-        db: AsyncSession = Depends(get_db),
+    movie_id: int,
+    db: AsyncSession = Depends(get_db),
 ) -> MovieDetailSchema:
     """
     Retrieve detailed information about a specific movie by its ID.
@@ -445,8 +472,7 @@ async def get_movie_by_id(
 
     if not movie:
         raise HTTPException(
-            status_code=404,
-            detail="Movie with the given ID was not found."
+            status_code=404, detail="Movie with the given ID was not found."
         )
 
     return MovieDetailSchema.model_validate(movie)
@@ -458,9 +484,9 @@ async def get_movie_by_id(
     response_model=MessageResponseSchema,
     summary="Delete a movie by ID",
     description=(
-            "<h3>Delete a specific movie from the database by its unique ID.</h3>"
-            "<p>If the movie exists, it will be deleted. If it does not exist, "
-            "a 404 error will be returned.</p>"
+        "<h3>Delete a specific movie from the database by its unique ID.</h3>"
+        "<p>If the movie exists, it will be deleted. If it does not exist, "
+        "a 404 error will be returned.</p>"
     ),
     responses={
         200: {
@@ -469,7 +495,9 @@ async def get_movie_by_id(
                 "application/json": {
                     "example": {
                         "no movie in carts": "Movie deleted successfully.",
-                        "movie in carts": "Movie deleted successfully. But it was found in the following shopping carts: [1, 12, 33]"
+                        "movie in carts": "Movie deleted successfully. But it "
+                        "was found in the following shopping "
+                        "carts: [1, 12, 33]",
                     }
                 }
             },
@@ -478,16 +506,18 @@ async def get_movie_by_id(
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."
+                    }
                 }
             },
         },
     },
-    status_code=200
+    status_code=200,
 )
 async def delete_movie(
-        movie_id: int,
-        db: AsyncSession = Depends(get_db),
+    movie_id: int,
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Delete a specific movie by its ID.
@@ -511,10 +541,11 @@ async def delete_movie(
 
     if not movie:
         raise HTTPException(
-            status_code=404,
-            detail="Movie with the given ID was not found."
+            status_code=404, detail="Movie with the given ID was not found."
         )
-    stmt = select(CartItemModel.cart_id).where(CartItemModel.movie_id == movie.id)
+    stmt = select(CartItemModel.cart_id).where(
+        CartItemModel.movie_id == movie.id
+    )
     result = await db.execute(stmt)
     cart_ids = result.scalars().all()
     await db.delete(movie)
@@ -533,9 +564,9 @@ async def delete_movie(
     dependencies=[Depends(is_moderator_or_admin)],
     summary="Update a movie by ID",
     description=(
-            "<h3>Update details of a specific movie by its unique ID.</h3>"
-            "<p>This endpoint updates the details of an existing movie. If the movie with "
-            "the given ID does not exist, a 404 error is returned.</p>"
+        "<h3>Update details of a specific movie by its unique ID.</h3>"
+        "<p>This endpoint updates the details of an existing movie. If the movie with "
+        "the given ID does not exist, a 404 error is returned.</p>"
     ),
     responses={
         200: {
@@ -550,16 +581,18 @@ async def delete_movie(
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."
+                    }
                 }
             },
         },
-    }
+    },
 )
 async def update_movie(
-        movie_id: int,
-        movie_data: MovieUpdateSchema,
-        db: AsyncSession = Depends(get_db),
+    movie_id: int,
+    movie_data: MovieUpdateSchema,
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update a specific movie by its ID.
@@ -585,8 +618,7 @@ async def update_movie(
 
     if not movie:
         raise HTTPException(
-            status_code=404,
-            detail="Movie with the given ID was not found."
+            status_code=404, detail="Movie with the given ID was not found."
         )
 
     for field, value in movie_data.model_dump(exclude_unset=True).items():

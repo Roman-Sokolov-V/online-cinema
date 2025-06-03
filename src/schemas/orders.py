@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 from database import OrderStatus
 from schemas.examples.orders import (
     create_order_example_schema,
-    response_list_orders_example_schema
+    response_list_orders_example_schema,
 )
 
 
@@ -59,5 +59,6 @@ class OrdersFilterParams(BaseModel):
         if self.date_from and self.date_to:
             if self.date_from > self.date_to:
                 raise ValueError(
-                    "`date_from` must be before or equal to `date_to`.")
+                    "`date_from` must be before or equal to `date_to`."
+                )
         return self

@@ -14,7 +14,6 @@ from sqlalchemy.orm import mapped_column, Mapped, relationship
 from database import Base
 from database.models.associations import FavoriteModel
 from database.models.opinions import CommentModel
-#from database.models.shopping_cart import CartItemModel
 
 from typing import TYPE_CHECKING
 
@@ -184,4 +183,3 @@ class MovieModel(Base):
             f" release_date='{self.year}',"
             f" score={self.meta_score})>"
         )
-

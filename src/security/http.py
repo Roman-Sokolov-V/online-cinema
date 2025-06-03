@@ -35,8 +35,10 @@ def get_auth_token(authorization: str = Header(...)) -> str:
     """
     return check_token(authorization)
 
+
 def get_optional_auth_token(
-        authorization: Optional[str] = Header(default=None)) -> None:
+        authorization: Optional[str] = Header(default=None)
+) -> None:
     """
     For swagger documentation only, for view not required authorization field
     :param authorization: authorization header value.

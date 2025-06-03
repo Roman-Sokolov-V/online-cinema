@@ -9,9 +9,7 @@ class BaseEmailPasswordSchema(BaseModel):
     email: EmailStr
     password: str
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
     @field_validator("email")
     @classmethod
@@ -50,9 +48,7 @@ class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 
 class UserActivationRequestSchema(BaseModel):
@@ -65,11 +61,9 @@ class UserActivationRequestSchema(BaseModel):
                 {
                     "self_activation": {
                         "email": "user@example.com",
-                        "token": "abc123xyz"
+                        "token": "abc123xyz",
                     },
-                    "admin_activation": {
-                        "email": "user@example.com"
-                    }
+                    "admin_activation": {"email": "user@example.com"},
                 }
             ]
         }

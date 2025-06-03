@@ -1,4 +1,4 @@
-from fastapi  import HTTPException, status
+from fastapi import HTTPException, status
 
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,9 +9,7 @@ from database import OrderModel, OrderStatus, OrderItemModel
 from schemas import OrdersFilterParams
 
 
-def get_orders_stmt(
-        filtered_query: OrdersFilterParams
-) -> Select:
+def get_orders_stmt(filtered_query: OrdersFilterParams) -> Select:
     stmt = select(OrderModel)
     if filtered_query.user_id is not None:
         stmt = stmt.where(OrderModel.user_id == filtered_query.user_id)
@@ -26,14 +24,14 @@ def get_orders_stmt(
     if filtered_query.limit is not None:
         stmt = stmt.limit(filtered_query.limit)
     return stmt.options(
-        selectinload(OrderModel.order_items)
-        .selectinload(OrderItemModel.movie)
+        selectinload(OrderModel.order_items).selectinload(OrderItemModel.movie)
     )
 
+
 async def set_status_canceled(
-        db: AsyncSession,
-        session_id: str | None = None,
-        order: OrderModel | None = None,
+    db: AsyncSession,
+    session_id: str | None = None,
+    order: OrderModel | None = None,
 ) -> None:
     """
     Set the status of an order to CANCELED.
@@ -68,11 +66,13 @@ async def set_status_canceled(
             )
     if order.status == OrderStatus.PAID:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Order already paid"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order already paid",
         )
     if order.status == OrderStatus.CANCELED:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Order already cancelled"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Order already cancelled",
         )
     order.status = OrderStatus.CANCELED
     await db.commit()

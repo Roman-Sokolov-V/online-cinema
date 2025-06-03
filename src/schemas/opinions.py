@@ -4,7 +4,8 @@ from pydantic import BaseModel, model_validator, Field
 
 from schemas.examples.opinions import (
     response_commentary_schema_example,
-    response_reply_schema_example, comment_schema_example,
+    response_reply_schema_example,
+    comment_schema_example,
     reply_schema_example,
 )
 
@@ -14,11 +15,7 @@ class CommentSchema(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                comment_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [comment_schema_example]},
     }
 
 
@@ -31,10 +28,8 @@ class ResponseCommentarySchema(BaseModel):
     model_config = {
         "from_attributes": True,
         "json_schema_extra": {
-            "examples": [
-                response_commentary_schema_example
-            ]
-        }
+            "examples": [response_commentary_schema_example]
+        },
     }
 
 
@@ -44,11 +39,7 @@ class ReplySchema(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                reply_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [reply_schema_example]},
     }
 
     @model_validator(mode="after")
@@ -68,15 +59,9 @@ class ResponseReplySchema(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                response_reply_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [response_reply_schema_example]},
     }
 
 
 class RateSchema(BaseModel):
     rate: int = Field(..., ge=0, lt=10)
-
-

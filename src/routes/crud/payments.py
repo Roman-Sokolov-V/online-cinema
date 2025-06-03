@@ -19,15 +19,14 @@ async def create_payment(db: AsyncSession, session_id: str):
     order = result.scalars().first()
     if not order:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
         )
     try:
         payment = PaymentModel(
             order=order,
             user_id=order.user_id,
             amount=order.total_amount,
-            external_payment_id=session_id
+            external_payment_id=session_id,
         )
         db.add(payment)
 
@@ -48,27 +47,27 @@ async def create_payment(db: AsyncSession, session_id: str):
         await db.rollback()
         raise HTTPException(
             status_code=400,
-            detail=f"Integrity error: {getattr(e, 'orig', str(e))}"
+            detail=f"Integrity error: {getattr(e, 'orig', str(e))}",
         )
     except Exception as e:
         await db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"Unexpected error: {getattr(e, 'orig', str(e))}, "
-                   f"while creating payment"
+            f"while creating payment",
         )
 
 
-async def get_users_payments(db: AsyncSession, user_id: int) -> Sequence[PaymentModel]:
+async def get_users_payments(
+    db: AsyncSession, user_id: int
+) -> Sequence[PaymentModel]:
     stmt = select(PaymentModel).where(PaymentModel.user_id == user_id)
     result = await db.execute(stmt.order_by(PaymentModel.created_at.desc()))
     payments = result.scalars().all()
     return payments
 
 
-def get_filtered_stmt(
-        filtered_query: PaymentsFilterParams
-) -> Select:
+def get_filtered_stmt(filtered_query: PaymentsFilterParams) -> Select:
 
     stmt = select(PaymentModel)
     if filtered_query.user_id is not None:
@@ -87,9 +86,10 @@ def get_filtered_stmt(
     #     stmt = stmt.limit(filtered_query.limit)
     return stmt
 
+
 def paginate_stmt(
-        stmt: Select,
-        filtered_query: PaymentsFilterParams,
+    stmt: Select,
+    filtered_query: PaymentsFilterParams,
 ) -> Select:
     if filtered_query.offset is not None:
         stmt = stmt.offset(filtered_query.offset)

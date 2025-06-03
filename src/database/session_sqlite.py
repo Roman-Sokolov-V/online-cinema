@@ -76,7 +76,7 @@ async def reset_sqlite_database() -> None:
 
 # sync
 
-SYNC_SQLITE_DATABASE_URL = f"sqlite:///:memory:"
+SYNC_SQLITE_DATABASE_URL = "sqlite:///:memory:"
 
 sync_sqlite_engine = create_engine(SYNC_SQLITE_DATABASE_URL, echo=False)
 
