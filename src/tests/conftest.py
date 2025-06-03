@@ -13,7 +13,7 @@ from database import (
     reset_database,
     get_db_contextmanager,
     UserGroupEnum,
-    UserGroupModel, RefreshTokenModel, UserProfileModel
+    UserGroupModel, UserProfileModel
 )
 from database.populate import CSVDatabaseSeeder
 from main import app
@@ -121,7 +121,7 @@ async def override_is_moderator_or_admin():
     """
     return None
 
-############################################################################
+
 @pytest_asyncio.fixture(scope="function")
 async def auth_client(
         email_sender_stub, s3_storage_fake, override_is_moderator_or_admin
@@ -407,10 +407,8 @@ async def create_user_and_profile(
         "avatar": ("avatar.jpg", img_bytes, "image/jpeg"),
     }
 
-    response = await client.post(profile_url, headers=headers, files=files)
-
-    expected_url = f"http://fake-s3.local/{avatar_key}"
-    actual_url = await s3_storage_fake.get_file_url(avatar_key)
+    await client.post(profile_url, headers=headers, files=files)
+    await s3_storage_fake.get_file_url(avatar_key)
     stmt = select(UserProfileModel).where(UserProfileModel.user == user)
     result = await db_session.execute(stmt)
     profile = result.scalars().first()
@@ -464,5 +462,3 @@ async def create_orders(get_3_movies, client, create_activate_login_user):
         assert response.status_code == 303
         prefix += 1
     return {"users_data": users_data, "movies": movies}
-
-

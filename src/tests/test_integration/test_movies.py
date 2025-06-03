@@ -441,10 +441,7 @@ async def test_movie_list_with_filter_by_stars(
     response_data = response.json()
     for movie in response_data["movies"]:
         stars = {star["name"] for star in movie["stars"]}
-        assert (
-            stars.issuperset({star_1, star_2}),
-            f"in every movie should be stars - {star_1} and {star_2}"
-        )
+        assert stars.issuperset({star_1, star_2}), f"in every movie should be stars - {star_1} and {star_2}"
 
 
 @pytest.mark.asyncio

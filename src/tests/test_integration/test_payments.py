@@ -19,8 +19,6 @@ BASE_URL = "/api/v1/payments/"
 @pytest_asyncio.fixture()
 async def create_payments_get_users_data(seed_database, get_12_movies, client, create_activate_login_user, db_session):
     movies = get_12_movies
-    print(len(movies))
-
     prefix = 1
     users_data = []
     # create 3 users
@@ -160,8 +158,6 @@ async def test_all_payment_success(
     header = {"Authorization": f"Bearer {admin_data['access_token']}"}
     response = await client.get(BASE_URL + "all/", headers=header)
     assert response.status_code == 200, "Expected 200"
-    print(response.json())
-
     assert len(response.json()["payments"]) == 10
     assert response.json()["items"] == 12
     assert response.json()["payments"] == [

@@ -212,4 +212,3 @@ async def test_get_related_movies_with_not_exist_genre(client, db_session):
 
     response = await client.get(Base_URL + "1/")
     assert response.status_code == 404, "Expected code 404"
-

@@ -1360,10 +1360,7 @@ async def test_new_activation_latter_user_not_found(
     stmt_token = select(ActivationTokenModel)
     result = await db_session.execute(stmt_token)
     token = result.scalars().all()
-    assert (
-        len(token) == 0,
-        "activation token should not be created if user with recived email not exists"
-    )
+    assert len(token) == 0, "activation token should not be created if user with recived email not exists"
 
 
 @pytest.mark.asyncio
@@ -1556,7 +1553,7 @@ async def test_reset_password_with_valid_credentials(
     user_data = await create_activate_login_user()
     user = user_data["user"]
     new_password = "NewStrongPassword123!"
-    print(user_data["payload"])
+
     request_data = {
         "email": user_data["payload"]["email"],
         "current_password": user_data["payload"]["password"],
@@ -1580,7 +1577,7 @@ async def test_reset_password_with_invalid_old_password(
     user = user_data["user"]
     old_password = user_data["payload"]["password"]
     new_password = "NewStrongPassword123!"
-    print(user_data["payload"])
+
     request_data = {
         "email": user_data["payload"]["email"],
         "current_password": "incorrectStrongPassword123!",
@@ -1604,7 +1601,7 @@ async def test_reset_password_without_old_password(
     user = user_data["user"]
     old_password = user_data["payload"]["password"]
     new_password = "NewStrongPassword123!"
-    print(user_data["payload"])
+
     request_data = {
         "email": user_data["payload"]["email"],
         "password": new_password
@@ -1615,10 +1612,7 @@ async def test_reset_password_without_old_password(
     )
     assert response.status_code == 422, "Expected 422 due to missing current_password field in request payload"
     response_json = response.json()
-    assert (
-        "current_password" in response_json["detail"][0]["loc"],
-        "Error should be related to missing 'current_password'"
-    )
+    assert "current_password" in response_json["detail"][0]["loc"], "Error should be related to missing 'current_password'"
     await db_session.refresh(user)
     assert user.verify_password(old_password) is True, "Password in DB must remain unchanged after invalid attempt"
 

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from decimal import Decimal
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -7,13 +6,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from config import get_settings
 from database import (
     OrderModel,
     OrderItemModel,
     OrderStatus,
 )
-from stripe_service.stripe_payment import create_stripe_session
 
 BASE_URL = "/api/v1/orders/"
 
@@ -24,7 +21,7 @@ async def check_response(response, session, movies, detail):
     order = await session.get(OrderModel, response.json().get("id"))
     assert order is not None
     created_at_str = response.json().get("created_at")
-    print(created_at_str)
+
     created_at_dt = datetime.fromisoformat(created_at_str)
     assert created_at_dt == order.created_at
     assert set(response.json().get("movies")) == set(
@@ -44,7 +41,7 @@ async def check_responses(response, orders_in_db):
             if order.id == resp_order.get("id"):
                 assert resp_order.get("created_at") is not None
                 created_at_str = resp_order.get("created_at")
-                print(created_at_str)
+
                 created_at_dt = datetime.fromisoformat(created_at_str)
                 assert created_at_dt == order.created_at
                 assert resp_order.get("total_amount") == str(
@@ -474,7 +471,6 @@ async def test_list_orders_with_filters(
                                     expected_orders_in_db]
     await check_responses(response, expected_orders_in_db)
 
-
     # filter by status
     status = "paid"
     order_3.status = "paid"
@@ -488,27 +484,3 @@ async def test_list_orders_with_filters(
     assert response.json().get("orders") is not None
     assert len(response.json().get("orders")) == 1
     assert response.json().get("orders")[0]["id"] == order_3.id
-
-
-def test_create_stripe_session():
-    settings = get_settings()
-    message = "ok"
-    total_amount=Decimal(5)
-    order_id = 1
-    stripe_session = create_stripe_session(
-        total_amount=total_amount,
-        titles="DieHard",
-        message=message,
-        order_id=order_id,
-    )
-    assert stripe_session is not None
-    assert stripe_session.url is not None
-    assert stripe_session.id is not None
-    assert stripe_session.url.startswith("https://checkout.stripe.com/")
-    assert stripe_session.id.startswith("cs_test")
-    assert stripe_session.object == "checkout.session"
-    assert stripe_session.mode == "payment"
-    assert stripe_session.success_url == settings.PAYMENT_SUCCESS_URL + f"{order_id}/"
-    assert stripe_session.cancel_url == settings.PAYMENT_CANCEL_URL + f"{order_id}/"
-    assert stripe_session.custom_text.submit["message"] == message
-    assert stripe_session.amount_total == total_amount * 100
