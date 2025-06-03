@@ -1,7 +1,8 @@
 from config import get_jwt_auth_manager
 from exceptions import InvalidTokenError, TokenExpiredError
-from schemas import AccessTokenPayload
-from security.http import get_token, get_auth_token, get_optional_auth_token
+#from schemas import AccessTokenPayload
+from security.http import get_auth_token, get_optional_auth_token
+#from security.http import get_token, get_auth_token, get_optional_auth_token
 from security.interfaces import JWTAuthManagerInterface
 
 from fastapi import Depends, status, HTTPException

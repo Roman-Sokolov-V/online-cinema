@@ -22,7 +22,7 @@ from schemas.profiles import (
     ProfileUpdateSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
-from security.http import get_token
+from security.http import get_auth_token
 from storages import S3StorageInterface
 
 
@@ -37,7 +37,7 @@ router = APIRouter()
 )
 async def create_profile(
     user_id: int,
-    token: str = Depends(get_token),
+    token: str = Depends(get_auth_token),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
     db: AsyncSession = Depends(get_db),
     s3_client: S3StorageInterface = Depends(get_s3_storage_client),
