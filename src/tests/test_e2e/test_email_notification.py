@@ -112,7 +112,7 @@ async def test_account_activation(e2e_client, settings, e2e_db_session):
     response = await e2e_client.post(activation_url, json={"email": user_email, "token": token_value})
     assert response.status_code == 200, f"Expected status code 200, got {response.status_code}"
     response_data = response.json()
-    assert response_data["message"] == "User account activated successfully.", "Unexpected activation message!"
+    assert response_data["detail"] == "User account activated successfully.", "Unexpected activation message!"
 
     await e2e_db_session.commit()
 
@@ -222,7 +222,7 @@ async def test_request_password_reset(e2e_client, e2e_db_session, settings):
     response = await e2e_client.post(reset_url, json={"email": user_email})
     assert response.status_code == 200, f"Expected status code 200, got {response.status_code}"
     response_data = response.json()
-    assert response_data["message"] == "If you are registered, you will receive an email with instructions."
+    assert response_data["detail"] == "If you are registered, you will receive an email with instructions."
 
     stmt = (
         select(PasswordResetTokenModel)
@@ -310,7 +310,7 @@ async def test_reset_password(e2e_client, e2e_db_session, settings):
 
     assert response.status_code == 200, f"Expected status code 200, got {response.status_code}"
     response_data = response.json()
-    assert response_data["message"] == "Password reset successfully.", "Unexpected password reset message!"
+    assert response_data["detail"] == "Password reset successfully.", "Unexpected password reset message!"
 
     stmt_deleted = (
         select(PasswordResetTokenModel)

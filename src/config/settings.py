@@ -31,7 +31,7 @@ class BaseAppSettings(BaseSettings):
     EMAIL_PORT: int = 25
     EMAIL_HOST_USER: str = "testuser"
     EMAIL_HOST_PASSWORD: str = "test_password"
-    EMAIL_USE_TLS: bool = False
+    EMAIL_USE_TLS: bool = os.getenv("EMAIL_USE_TLS", "False").lower() == "true"
     MAILHOG_API_PORT: int = 8025
 
     S3_STORAGE_HOST: str = "minio-theater"
@@ -39,6 +39,7 @@ class BaseAppSettings(BaseSettings):
     S3_STORAGE_ACCESS_KEY: str = "minioadmin"
     S3_STORAGE_SECRET_KEY: str = "some_password"
     S3_BUCKET_NAME: str = "theater-storage"
+
     CELERY_BROKER_URL: str = "redis://127.0.0.1:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://127.0.0.1:6379/0"
 
@@ -77,7 +78,10 @@ class TestingSettings(BaseAppSettings):
     STRIPE_PUBLISHABLE_KEY: str
     PAYMENT_SUCCESS_URL: str = "http://127.0.0.1:8000/api/v1/notifications/success/"
     PAYMENT_CANCEL_URL: str = "http://127.0.0.1:8000/api/v1/notifications/cancel/"
-    STRIPE_WEBHOOK_SECRET: str
+    STRIPE_WEBHOOK_SECRET: str = "#########################"
+
+    S3_STORAGE_HOST: str = "minio-theater-test"
+
 
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
         object.__setattr__(self, 'PATH_TO_DB', ":memory:")

@@ -21,7 +21,7 @@ async def test_create_user_profile(e2e_client, e2e_db_session, settings, s3_clie
     4. Verify that the avatar URL is valid.
     5. Connect directly to MinIO (via aioboto3) and verify that the file exists.
     """
-
+    print("------------------------------------------------------Start_________________________")
     user_email = "test@mate.com"
     user_password = "NewSecurePassword123!"
 
