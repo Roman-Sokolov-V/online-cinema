@@ -185,7 +185,7 @@ class EmailSender(EmailSenderInterface):
             html_content=html_content,
         )
 
-    async def send_payments_status_notificator(
+    async def send_payments_status(
             self,
             email: str,
             payments_status: str,
