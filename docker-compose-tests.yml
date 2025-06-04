@@ -20,6 +20,9 @@ services:
       - MINIO_HOST=minio-theater-test
       - MINIO_PORT=9000
       - MINIO_STORAGE=theater-storage
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLIC_KEY=${STRIPE_PUBLIC_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
     depends_on:
       mailhog:
         condition: service_started
