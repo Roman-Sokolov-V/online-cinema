@@ -22,8 +22,8 @@ def get_settings() -> BaseAppSettings:
     """
     environment = os.getenv("ENVIRONMENT", "developing")
     if environment == "testing":
-        return TestingSettings()
-    return Settings()
+        return TestingSettings()  # type: ignore
+    return Settings()  # type: ignore
 
 
 def get_jwt_auth_manager(settings: BaseAppSettings = Depends(get_settings)) -> JWTAuthManagerInterface:
@@ -43,9 +43,9 @@ def get_jwt_auth_manager(settings: BaseAppSettings = Depends(get_settings)) -> J
         the appropriate secret keys and algorithm.
     """
     return JWTAuthManager(
-        secret_key_access=settings.SECRET_KEY_ACCESS,
-        secret_key_refresh=settings.SECRET_KEY_REFRESH,
-        algorithm=settings.JWT_SIGNING_ALGORITHM
+        secret_key_access=settings.SECRET_KEY_ACCESS,  # type: ignore
+        secret_key_refresh=settings.SECRET_KEY_REFRESH,  # type: ignore
+        algorithm=settings.JWT_SIGNING_ALGORITHM  # type: ignore
     )
 
 

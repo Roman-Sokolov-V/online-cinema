@@ -50,6 +50,13 @@ build-backend = "poetry.core.masonry.api"
 [tool.mypy]
 python_version = "3.12"
 mypy_path = ["src"]
+exclude = '''
+(
+    ^src/database/migrations/     # виключити всі файли в src/database/migrations
+  | ^src/tests/                   # виключити всі тести
+  | ^\.venv/                      # виключити .venv
+)
+'''
 
 [tool.black]
 line-length = 79

@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timezone
-from celery import Celery
+from celery import Celery  # type: ignore
 from sqlalchemy import delete
 
 from database import (
