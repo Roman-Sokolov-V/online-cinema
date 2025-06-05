@@ -49,8 +49,6 @@ jobs:
 
   test-e2e:
     runs-on: ubuntu-latest
-     - name: Write Stripe secrets to .env file
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
