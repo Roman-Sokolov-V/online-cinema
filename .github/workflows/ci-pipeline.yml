@@ -64,7 +64,7 @@ jobs:
 
       - name: Start Docker Compose and run E2E tests
         run: |
-          docker compose -f docker-compose-tests.yml up --build --abort-on-container-exit --exit-code-from web
+          docker compose -f docker-compose-tests.yml up --build --exit-code-from web
 
       - name: Cleanup Docker Compose
         if: always()
