@@ -1,0 +1,11 @@
+from routes.movies import router as movie_router
+from routes.accounts import router as accounts_router
+from routes.profiles import router as profiles_router
+from routes.genres import router as genres_router
+from routes.actors import router as actors_router
+from routes.opinions import router as favorites_router
+from routes.shopping_cart import router as shopping_cart_router
+from routes.orders import router as orders_router
+from routes.webhooks import router as webhooks_router
+from routes.notifications import router as notifications_router
+from routes.payments import router as payments_router

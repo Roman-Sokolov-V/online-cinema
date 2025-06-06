@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Оплата скасована</title>
+    <style>
+        body {
+            background: #fff5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #d32f2f;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 2rem 3rem;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(211, 47, 47, 0.15);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            color: #7f1d1d;
+        }
+        .crossmark {
+            font-size: 5rem;
+            color: #d32f2f;
+            margin-bottom: 1rem;
+        }
+        a.button {
+            display: inline-block;
+            background-color: #d32f2f;
+            color: white;
+            text-decoration: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        a.button:hover {
+            background-color: #a02323;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="crossmark">✗</div>
+        <h1>Оплата скасована</h1>
+        <p>Ваша оплата була скасована. Якщо це помилка, будь ласка, спробуйте ще раз.</p>
+        <a href="/" class="button">Повернутися на головну</a>
+    </div>
+</body>
+</html>
