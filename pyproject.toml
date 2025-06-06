@@ -38,6 +38,9 @@ gunicorn = "^23.0.0"
 redis = "^5.2.1"
 celery = "^5.5.1"
 mypy = "^1.15.0"
+stripe = "^12.1.0"
+assertpy = "^1.1"
+python-dotenv = "^1.1.0"
 
 
 [build-system]
@@ -47,3 +50,18 @@ build-backend = "poetry.core.masonry.api"
 [tool.mypy]
 python_version = "3.12"
 mypy_path = ["src"]
+exclude = '''
+(
+    ^src/database/migrations/     # виключити всі файли в src/database/migrations
+  | ^src/tests/                   # виключити всі тести
+  | ^\.venv/                      # виключити .venv
+)
+'''
+
+[tool.black]
+line-length = 79
+target-version = ["py311"]
+skip-string-normalization = false
+
+[flake8]
+extend-ignore = ["E203", "W503"]

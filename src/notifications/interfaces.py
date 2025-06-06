@@ -66,14 +66,14 @@ class EmailSenderInterface(ABC):
 
     @abstractmethod
     async def send_activity_notificator(
-           self,
-           email: str,
-           comment_id: int,
-           comment_content: str,
-           reply_id: int,
-           movie_title: str,
-           is_like: bool | None = None,
-           reply_content: str | None = None,
+            self,
+            email: str,
+            comment_id: int,
+            comment_content: str,
+            reply_id: int,
+            movie_title: str,
+            is_like: bool | None = None,
+            reply_content: str | None = None,
     ) -> None:
         """
         Notify users when their comments receive replies or likes.
@@ -87,5 +87,20 @@ class EmailSenderInterface(ABC):
         reply_content (str): The content of the reply on which reply was given.
         is_like(bool): Whether the comment is like.
         movie_title(str): title of the movie.
+        """
+        pass
+
+    @abstractmethod
+    async def send_payments_status(
+            self,
+            email: str,
+            payments_status: str
+    ) -> None:
+        """
+        Notify the user that the payment was successful or canceled
+
+        Args:
+        email (str): The recipient's email address.
+        payments_status (StatusPayment): Payments status of the payment.
         """
         pass

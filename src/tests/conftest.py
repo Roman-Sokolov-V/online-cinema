@@ -7,13 +7,13 @@ from sqlalchemy.orm import joinedload
 from io import BytesIO
 from PIL import Image
 
-from config import get_settings, get_accounts_email_notificator, \
+from config import get_settings, get_email_notificator, \
     get_s3_storage_client
 from database import (
     reset_database,
     get_db_contextmanager,
     UserGroupEnum,
-    UserGroupModel, RefreshTokenModel, UserProfileModel
+    UserGroupModel, UserProfileModel
 )
 from database.populate import CSVDatabaseSeeder
 from main import app
@@ -121,7 +121,7 @@ async def override_is_moderator_or_admin():
     """
     return None
 
-############################################################################
+
 @pytest_asyncio.fixture(scope="function")
 async def auth_client(
         email_sender_stub, s3_storage_fake, override_is_moderator_or_admin
@@ -133,7 +133,7 @@ async def auth_client(
     and successfully authentication and authorisation
     """
     app.dependency_overrides[
-        get_accounts_email_notificator] = lambda: email_sender_stub
+        get_email_notificator] = lambda: email_sender_stub
     app.dependency_overrides[get_s3_storage_client] = lambda: s3_storage_fake
     app.dependency_overrides[
         is_moderator_or_admin] = lambda: override_is_moderator_or_admin
@@ -153,7 +153,7 @@ async def client(email_sender_stub, s3_storage_fake):
     Overrides the dependencies for email sender and S3 storage with test doubles.
     """
     app.dependency_overrides[
-        get_accounts_email_notificator] = lambda: email_sender_stub
+        get_email_notificator] = lambda: email_sender_stub
     app.dependency_overrides[get_s3_storage_client] = lambda: s3_storage_fake
 
     async with AsyncClient(transport=ASGITransport(app=app),
@@ -407,10 +407,8 @@ async def create_user_and_profile(
         "avatar": ("avatar.jpg", img_bytes, "image/jpeg"),
     }
 
-    response = await client.post(profile_url, headers=headers, files=files)
-
-    expected_url = f"http://fake-s3.local/{avatar_key}"
-    actual_url = await s3_storage_fake.get_file_url(avatar_key)
+    await client.post(profile_url, headers=headers, files=files)
+    await s3_storage_fake.get_file_url(avatar_key)
     stmt = select(UserProfileModel).where(UserProfileModel.user == user)
     result = await db_session.execute(stmt)
     profile = result.scalars().first()
@@ -435,6 +433,13 @@ async def get_3_movies(db_session):
     return movies
 
 
+@pytest_asyncio.fixture
+async def get_12_movies(db_session):
+    stmt = select(MovieModel).limit(12)
+    result = await db_session.execute(stmt)
+    movies = result.scalars().all()
+    return movies
+
 
 @pytest_asyncio.fixture
 async def create_orders(get_3_movies, client, create_activate_login_user):
@@ -454,6 +459,6 @@ async def create_orders(get_3_movies, client, create_activate_login_user):
             f"/api/v1/cart/items/{movie.id}/", headers=header)
         assert response.status_code == 200
         response = await client.post(BASE_URL + "place/", headers=header)
-        assert response.status_code == 201
+        assert response.status_code == 303
         prefix += 1
     return {"users_data": users_data, "movies": movies}

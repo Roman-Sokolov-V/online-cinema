@@ -1253,28 +1253,35 @@ async def test_refresh_access_token_user_not_found(client, db_session,
         group_id=user_group.id
     )
     user.is_active = True
+    user = UserModel.create(
+        email=user_payload["email"],
+        raw_password=user_payload["password"],
+        group_id=user_group.id,
+    )
+    user.is_active = True
     db_session.add(user)
     await db_session.commit()
-
-    invalid_user_id = 9999
+    await db_session.refresh(user)
     refresh_token = jwt_manager.create_refresh_token(
-        {"user_id": invalid_user_id})
+        {"user_id": user.id})
 
     refresh_token_record = RefreshTokenModel.create(
-        user_id=invalid_user_id,
+        user_id=user.id,
         days_valid=7,
         token=refresh_token
     )
     db_session.add(refresh_token_record)
+    await db_session.commit()
+    await db_session.delete(user)
     await db_session.commit()
 
     refresh_payload = {"refresh_token": refresh_token}
     refresh_response = await client.post("/api/v1/accounts/refresh/",
                                          json=refresh_payload)
 
-    assert refresh_response.status_code == 404, "Expected status code 404 for non-existent user."
+    assert refresh_response.status_code == 401, "Expected status code 401 for not exist refresh token in db."
     assert refresh_response.json()[
-               "detail"] == "User not found.", "Unexpected error message."
+               "detail"] == "Refresh token not found.", "Unexpected error message."
 
 
 @pytest.mark.asyncio
@@ -1353,10 +1360,7 @@ async def test_new_activation_latter_user_not_found(
     stmt_token = select(ActivationTokenModel)
     result = await db_session.execute(stmt_token)
     token = result.scalars().all()
-    assert (
-        len(token) == 0,
-        "activation token should not be created if user with recived email not exists"
-    )
+    assert len(token) == 0, "activation token should not be created if user with recived email not exists"
 
 
 @pytest.mark.asyncio
@@ -1549,7 +1553,7 @@ async def test_reset_password_with_valid_credentials(
     user_data = await create_activate_login_user()
     user = user_data["user"]
     new_password = "NewStrongPassword123!"
-    print(user_data["payload"])
+
     request_data = {
         "email": user_data["payload"]["email"],
         "current_password": user_data["payload"]["password"],
@@ -1573,7 +1577,7 @@ async def test_reset_password_with_invalid_old_password(
     user = user_data["user"]
     old_password = user_data["payload"]["password"]
     new_password = "NewStrongPassword123!"
-    print(user_data["payload"])
+
     request_data = {
         "email": user_data["payload"]["email"],
         "current_password": "incorrectStrongPassword123!",
@@ -1597,7 +1601,7 @@ async def test_reset_password_without_old_password(
     user = user_data["user"]
     old_password = user_data["payload"]["password"]
     new_password = "NewStrongPassword123!"
-    print(user_data["payload"])
+
     request_data = {
         "email": user_data["payload"]["email"],
         "password": new_password
@@ -1608,10 +1612,7 @@ async def test_reset_password_without_old_password(
     )
     assert response.status_code == 422, "Expected 422 due to missing current_password field in request payload"
     response_json = response.json()
-    assert (
-        "current_password" in response_json["detail"][0]["loc"],
-        "Error should be related to missing 'current_password'"
-    )
+    assert "current_password" in response_json["detail"][0]["loc"], "Error should be related to missing 'current_password'"
     await db_session.refresh(user)
     assert user.verify_password(old_password) is True, "Password in DB must remain unchanged after invalid attempt"
 

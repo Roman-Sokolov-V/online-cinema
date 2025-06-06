@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 import pytest
 
-from src.celery_.tasks import remove_expired_activation_tokens
+from celery_.tasks import remove_expired_activation_tokens
 from database import (
     ActivationTokenModel,
     reset_sync_sqlite_database,

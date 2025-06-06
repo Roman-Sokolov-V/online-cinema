@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: ./docker/tests/Dockerfile
     container_name: backend_theater_test
+    env_file:
+      - .env
     command: [ "pytest", "-c", "/usr/src/config/pytest.ini",
                "-m", "e2e", "--maxfail=5", "--disable-warnings", "-v", "--tb=short"]
     environment:
@@ -20,6 +22,9 @@ services:
       - MINIO_HOST=minio-theater-test
       - MINIO_PORT=9000
       - MINIO_STORAGE=theater-storage
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
     depends_on:
       mailhog:
         condition: service_started
@@ -67,7 +72,7 @@ services:
       context: .
       dockerfile: docker/minio_mc/Dockerfile
     container_name: minio_mc_theater_test
-    command: [ "/bin/sh", "-c", "/commands/setup_minio.sh" ]
+    command: [ "/bin/sh", "-c", "/commands/setup_minio.sh"]
     depends_on:
       minio:
         condition: service_healthy

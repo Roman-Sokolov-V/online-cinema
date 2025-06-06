@@ -26,7 +26,8 @@ def apply_m2m_filter(
         return field.any(
             func.lower(
                 getattr(field.property.mapper.class_, related_field_name)
-            ) == v.strip().lower()
+            )
+            == v.strip().lower()
         )
 
     if "|" in value:

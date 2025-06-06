@@ -42,6 +42,5 @@ class CommentModel(Base):
     )
 
     def __repr__(self):
-        return f"<Comment(id={self.id}, content={self.content[:20]}..., movie_id={self.movie_id}, parent_id={self.parent_id})>"
-
-
+        return (f"<Comment(id={self.id}, content={self.content[:20]}..., "
+                f"movie_id={self.movie_id}, parent_id={self.parent_id})>")

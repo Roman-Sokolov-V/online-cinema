@@ -8,9 +8,7 @@ class CartItemSchema(BaseModel):
     movie_id: int
     movie: MovieBaseSchema
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 
 class ResponseShoppingCartSchema(BaseModel):

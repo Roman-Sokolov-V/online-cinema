@@ -790,9 +790,7 @@ async def test_update_all_fields_user_profile_with_fake_s3(
     [
         (None, 401, "Authorization header is missing"),
         (
-                {"Authorization": "Token invalid_token"},
-                401,
-                "Invalid Authorization header format. Expected 'Bearer <token>'"
+                {"Authorization": "Token invalid_token"}, 401, "Invalid Authorization header format. Expected 'Bearer <token>'"
         ),
     ],
 )
@@ -818,14 +816,9 @@ async def test_update_user_profile_invalid_auth(
     profile_url = f"/api/v1/profiles/users/{user.id}/profile/"
 
     response = await client.patch(profile_url, headers=headers)
-    assert (
-        response.status_code == expected_status,
-        f"Expected {expected_status}, got {response.status_code}"
-    )
-    assert (
-        response.json()["detail"] == expected_detail,
-        f"Unexpected error message: {response.json()['detail']}"
-    )
+    assert response.status_code == expected_status, f"Expected {expected_status}, got {response.status_code}"
+
+    assert response.json()["detail"] == expected_detail, f"Unexpected error message: {response.json()['detail']}"
 
 
 @pytest.mark.asyncio
@@ -868,10 +861,7 @@ async def test_update_user_profile_expired_token(
 
     response = await client.patch(profile_url, headers=headers, files=files)
     assert response.status_code == 401, f"Expected 401, got {response.status_code}"
-    assert (
-        response.json()["detail"] == "Token has expired.",
-        f"Unexpected error message: {response.json()['detail']}"
-    )
+    assert response.json()["detail"] == "Token has expired.", f"Unexpected error message: {response.json()['detail']}"
 
 
 @pytest.mark.asyncio

@@ -22,8 +22,8 @@ def get_settings() -> BaseAppSettings:
     """
     environment = os.getenv("ENVIRONMENT", "developing")
     if environment == "testing":
-        return TestingSettings()
-    return Settings()
+        return TestingSettings()  # type: ignore
+    return Settings()  # type: ignore
 
 
 def get_jwt_auth_manager(settings: BaseAppSettings = Depends(get_settings)) -> JWTAuthManagerInterface:
@@ -43,13 +43,13 @@ def get_jwt_auth_manager(settings: BaseAppSettings = Depends(get_settings)) -> J
         the appropriate secret keys and algorithm.
     """
     return JWTAuthManager(
-        secret_key_access=settings.SECRET_KEY_ACCESS,
-        secret_key_refresh=settings.SECRET_KEY_REFRESH,
-        algorithm=settings.JWT_SIGNING_ALGORITHM
+        secret_key_access=settings.SECRET_KEY_ACCESS,  # type: ignore
+        secret_key_refresh=settings.SECRET_KEY_REFRESH,  # type: ignore
+        algorithm=settings.JWT_SIGNING_ALGORITHM  # type: ignore
     )
 
 
-def get_accounts_email_notificator(
+def get_email_notificator(
     settings: BaseAppSettings = Depends(get_settings)
 ) -> EmailSenderInterface:
     """
@@ -77,7 +77,8 @@ def get_accounts_email_notificator(
         activation_complete_email_template_name=settings.ACTIVATION_COMPLETE_EMAIL_TEMPLATE_NAME,
         password_email_template_name=settings.PASSWORD_RESET_TEMPLATE_NAME,
         password_complete_email_template_name=settings.PASSWORD_RESET_COMPLETE_TEMPLATE_NAME,
-        activity_notification_template_name=settings.ACTIVITY_NOTIFICATION
+        activity_notification_template_name=settings.ACTIVITY_NOTIFICATION,
+        payment_notification_template_name=settings.PAYMENT_NOTIFICATION,
     )
 
 

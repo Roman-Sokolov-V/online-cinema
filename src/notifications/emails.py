@@ -12,18 +12,19 @@ from notifications.interfaces import EmailSenderInterface
 class EmailSender(EmailSenderInterface):
 
     def __init__(
-            self,
-            hostname: str,
-            port: int,
-            email: str,
-            password: str,
-            use_tls: bool,
-            template_dir: str,
-            activation_email_template_name: str,
-            activation_complete_email_template_name: str,
-            password_email_template_name: str,
-            password_complete_email_template_name: str,
-            activity_notification_template_name: str,
+        self,
+        hostname: str,
+        port: int,
+        email: str,
+        password: str,
+        use_tls: bool,
+        template_dir: str,
+        activation_email_template_name: str,
+        activation_complete_email_template_name: str,
+        password_email_template_name: str,
+        password_complete_email_template_name: str,
+        activity_notification_template_name: str,
+        payment_notification_template_name: str,
     ):
         self._hostname = hostname
         self._port = port
@@ -35,6 +36,7 @@ class EmailSender(EmailSenderInterface):
         self._password_email_template_name = password_email_template_name
         self._password_complete_email_template_name = password_complete_email_template_name
         self._activity_notification_template_name = activity_notification_template_name
+        self._payment_notification_template_name = payment_notification_template_name
 
         self._env = Environment(loader=FileSystemLoader(template_dir))
 
@@ -58,13 +60,20 @@ class EmailSender(EmailSenderInterface):
         message.attach(MIMEText(html_content, "html"))
 
         try:
-            smtp = aiosmtplib.SMTP(hostname=self._hostname, port=self._port,
-                                   start_tls=self._use_tls)
+            smtp = aiosmtplib.SMTP(
+                hostname=self._hostname,
+                port=self._port,
+                start_tls=self._use_tls
+            )
             await smtp.connect()
             if self._use_tls:
                 await smtp.starttls()
             await smtp.login(self._email, self._password)
-            await smtp.sendmail(self._email, [recipient], message.as_string())
+            await smtp.sendmail(
+                self._email,
+                [recipient],
+                message.as_string()
+            )
             await smtp.quit()
         except aiosmtplib.SMTPException as error:
             logging.error(f"Failed to send email to {recipient}: {error}")
@@ -170,6 +179,34 @@ class EmailSender(EmailSenderInterface):
             movie_title=movie_title
         )
         subject = "Somebody has replied or liked your commentary"
+        await self._send_email(
+            recipient=email,
+            subject=subject,
+            html_content=html_content,
+        )
+
+    async def send_payments_status(
+            self,
+            email: str,
+            payments_status: str,
+
+    ) -> None:
+        """
+        Notify users when their comments receive replies or likes.
+         email asynchronously.
+
+        Args:
+            email (str): The recipient's email address.
+            payments_status (StatusPayment): Payments status of the payment.
+        """
+        template = self._env.get_template(
+            self._payment_notification_template_name
+        )
+        html_content = template.render(
+            email=email,
+            payments_status=payments_status
+        )
+        subject = "Payments status"
         await self._send_email(
             recipient=email,
             subject=subject,

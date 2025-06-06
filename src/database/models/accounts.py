@@ -26,14 +26,15 @@ from database import Base
 from .associations import FavoriteModel
 from .movies import MovieModel
 
+
 from database.validators import accounts as validators
 from database.models.opinions import CommentModel
 from security.passwords import hash_password, verify_password
 from security.utils import generate_secure_token
 
-# from typing import TYPE_CHECKING
-# if TYPE_CHECKING:
-#     from database import MovieModel
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from database import OrderModel
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -116,8 +117,10 @@ class UserModel(Base):
         secondary=FavoriteModel,
         back_populates="users_like"
     )
-
-
+    orders: Mapped[List["OrderModel"]] = relationship(
+        "OrderModel",
+        back_populates="user",
+    )
 
     def __repr__(self):
         return f"<UserModel(id={self.id}, email={self.email}, is_active={self.is_active})>"

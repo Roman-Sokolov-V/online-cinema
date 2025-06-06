@@ -95,7 +95,7 @@ async def test_permission(client, db_session, create_activate_login_user):
         f"/api/v1/theater/actors/{actor_id}/",
         json={"name": "horror"}, headers=moderator_header
     )
-    assert response.status_code != 403, "Moderator shold has permissions, to patch actor"
+    assert response.status_code != 403, "Moderator should has permissions, to patch actor"
     assert response.status_code == 200, "Expected code 200, if patch successful"
 
 

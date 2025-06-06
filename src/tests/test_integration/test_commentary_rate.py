@@ -106,7 +106,7 @@ async def test_create_reply_successfully(
     response = await client.post(
         Base_URL + f"reply/{comment.id}/", json=reply_data, headers=header
     )
-    print(response.json())
+
     assert response.status_code == 201, "Expected 201"
     assert response.json().get("id") is not None
     assert response.json().get("content") == reply_data["content"]
