@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
@@ -535,7 +535,7 @@ async def delete_movie(
     :return: A response indicating the successful deletion of the movie.
     :rtype: MessageResponseSchema
     """
-    stmt = select(MovieModel).where(MovieModel.id == movie_id)
+    stmt: Any = select(MovieModel).where(MovieModel.id == movie_id)
     result = await db.execute(stmt)
     movie = result.scalars().first()
 
