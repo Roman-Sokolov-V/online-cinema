@@ -24,9 +24,9 @@ git reset --hard origin/main || handle_error "Failed to reset the local reposito
 echo "Fetching tags from the remote repository..."
 git fetch origin --tags || handle_error "Failed to fetch tags from the 'origin' remote."
 
-# Stop and remove existing containers
-echo "Stopping and removing old containers..."
-docker compose -f docker-compose-prod.yml down || handle_error "Failed to stop old containers."
+## Stop and remove existing containers
+#echo "Stopping and removing old containers..."
+#docker compose -f docker-compose-prod.yml down || handle_error "Failed to stop old containers."
 
 # Build and run Docker containers with Docker Compose v2
 docker compose -f docker-compose-prod.yml up -d --build || handle_error "Failed to build and run Docker containers using docker-compose-prod.yml."
