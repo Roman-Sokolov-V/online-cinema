@@ -187,9 +187,9 @@ async def remove_from_favorite(
 
 @router.get(
     "/movies/favorite/",
-    summary="Retrieve favorite movie by id.",
+    summary="List favorite movies.",
     response_model=FavoriteListSchema,
-    description=("<h3>This endpoint retrieve favorite movie by id..</h3>"),
+    description=("<h3>This endpoint retrieve favorite movies.</h3>"),
     responses={
         404: {
             "description": "User with the access token was not found.",
@@ -289,11 +289,6 @@ async def get_favorites(
             selectinload(MovieModel.stars),
         )
     )
-    # stmt = select(UserModel.favorite_movies).where(UserModel.id == user_id).options(
-    #     selectinload(UserModel.favorite_movies).selectinload(MovieModel.genres),
-    #     selectinload(UserModel.favorite_movies).selectinload(MovieModel.directors),
-    #     selectinload(UserModel.favorite_movies).selectinload(MovieModel.stars)
-    # )
 
     stmt = apply_m2m_filter(stmt, MovieModel.genres, genres)
     stmt = apply_m2m_filter(stmt, MovieModel.directors, directors)
@@ -301,7 +296,7 @@ async def get_favorites(
 
     if year:
         try:
-            year = int(year)
+            year = int(year)  # type: ignore
         except ValueError:
             raise HTTPException(
                 status_code=400,
@@ -310,7 +305,7 @@ async def get_favorites(
         stmt = stmt.filter(MovieModel.year == year)
     if min_rating:
         try:
-            min_rating = float(min_rating)
+            min_rating = float(min_rating)  # type: ignore
         except ValueError:
             raise HTTPException(
                 status_code=400,
@@ -459,8 +454,8 @@ async def add_comment_to_movie(
 @router.post(
     "/movies/comment/reply/{comment_id}/",
     response_model=ResponseReplySchema,
-    summary="Add commentary to movie",
-    description="<h3>Add commentary to movie.</h3>",
+    summary="Reply no the comment",
+    description="<h3>Reply no the comment.</h3>",
     responses={
         201: {
             "description": "Reply successfully added to the movie.",
